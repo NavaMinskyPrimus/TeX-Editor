@@ -23,8 +23,29 @@ int readStream(char *destination, Files *fileStream, int n)
     }
     return n - lefttoread;
 }
-//
-void readMoreToBuffer()
+
+// creates a filestream given a list of file names.
+Files *initializeFileStream(char **filenamelist)
+{
+    size_t count = 0;
+    while (filenamelist[count] != NULL)
+    {
+        count++;
+    }
+    if (count < 1)
+    {
+        WARN("Invalid initialization of file stream%s", "");
+    }
+    Files *myStuff = (Files *)malloc(sizeof(Files)); // lots of error handling needed, make sure argc is at least 2 and stuff
+    myStuff->numberOfFiles = count;
+    myStuff->currentFile = fopen(filenamelist[0], "r");
+    myStuff->filenames = filenamelist;
+    myStuff->numCurrentFile = 0;
+    return myStuff;
+}
+
+// We should double what is in the buffer, doubling it's memory if need be.
+void readMoreToBuffer(char *buffer, Files *filesToRead)
 {
 }
 
@@ -167,11 +188,8 @@ char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
 void readStreamTest1()
 {
     printf("### Stream Test 1: \n");
-    Files *myStuff = (Files *)malloc(sizeof(Files));
-    myStuff->numberOfFiles = 3;
-    myStuff->currentFile = fopen("testFile.txt", "r");
-    myStuff->filenames = test_filenames;
-    myStuff->numCurrentFile = 0;
+
+    Files *myStuff = initializeFileStream(test_filenames);
     char *string = (char *)malloc(sizeof(char) * 10);
     readStream(string, myStuff, 10);
     printf("%s\n", string);
@@ -179,11 +197,7 @@ void readStreamTest1()
 void readStreamTest2()
 {
     printf("### Stream Test 2: \n");
-    Files *myStuff = (Files *)malloc(sizeof(Files));
-    myStuff->numberOfFiles = 3;
-    myStuff->currentFile = fopen("testFile.txt", "r");
-    myStuff->filenames = test_filenames;
-    myStuff->numCurrentFile = 0;
+    Files *myStuff = initializeFileStream(test_filenames);
     char *string = (char *)malloc(sizeof(char) * 500);
     readStream(string, myStuff, 17);
     printf("%s\n", string);
@@ -204,10 +218,5 @@ int main(int argc, char *argv[])
     }
     else
     {
-        Files *myStuff = (Files *)malloc(sizeof(Files)); // lots of error handling needed, make sure argc is at least 2 and stuff
-        myStuff->numberOfFiles = argc;
-        myStuff->currentFile = fopen(argv[1], "r");
-        myStuff->filenames = argv;
-        myStuff->numCurrentFile = 0;
     }
 }

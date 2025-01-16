@@ -3,3 +3,7 @@ test passed
 ### Send Test 2: 
 proj1: Input to send were strange, 100 larger then langth of testpassed
 testpassed 
+### Stream Test 1: 
+onemoretes
+### Stream Test 2: 
+onemoretestinghi
