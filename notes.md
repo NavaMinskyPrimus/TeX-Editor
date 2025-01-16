@@ -33,3 +33,5 @@ So, for a given thing you want to test, you want to:
 
 Things to do:
 1. make a function that initializes a file stream
+2. try to make buffer doubler
+3. try to make progress on understanding how before after will work and recursion and stuff

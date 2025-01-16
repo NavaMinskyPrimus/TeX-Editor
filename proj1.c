@@ -23,7 +23,6 @@ int readStream(char *destination, Files *fileStream, int n)
     }
     return n - lefttoread;
 }
-
 //
 void readMoreToBuffer()
 {
