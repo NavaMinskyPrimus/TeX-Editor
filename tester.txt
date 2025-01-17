@@ -7,3 +7,12 @@ testpassed
 onemoretes
 ### Stream Test 2: 
 onemoretestinghi
+### Buffer Test 1: 
+hion,1
+### Buffer Test 2: 
+1234567890123456789onemoretestinghi,0
+### Search Macros Test 1: 
+Search for something there: name2
+Search for something not there: 1
+### Isvalidname test 1: 
+proj1: Invalid macro name: $$

@@ -45,8 +45,36 @@ Files *initializeFileStream(char **filenamelist)
 }
 
 // We should double what is in the buffer, doubling it's memory if need be.
-void readMoreToBuffer(char *buffer, Files *filesToRead)
+bool expandBuffer(char *buffer, Files *filesToRead)
 {
+    if (buffer == NULL || filesToRead == NULL)
+    {
+        return false;
+    }
+    size_t capacity = malloc_usable_size(buffer);
+    size_t currentLength = strlen(buffer);
+    size_t requiredLength = currentLength * 2; // Double the current length
+
+    // Check if the current capacity is enough
+    if (requiredLength + 1 > capacity) // don't forget null termination :)
+    {
+        char *newBuffer = realloc(buffer, capacity * 2 * sizeof(char));
+        if (newBuffer == NULL)
+        {
+            // Reallocation failed, can this happen, idk but I keep getting warnings so maybe this'll fix it
+            return false;
+        }
+
+        buffer = newBuffer;
+    }
+
+    // Read 'currentLength' characters from the file stream into the buffer starting at currentLength
+    int bytesRead = readStream(buffer + currentLength, filesToRead, currentLength);
+    if (bytesRead < currentLength)
+    {
+        return false;
+    }
+    return true;
 }
 
 // This function takes *s and shifts it over, freeing the first b chars and sending them to stdout. YAY!!
@@ -69,7 +97,6 @@ void send(char *s, int b)
     // Shift the remaining characters to the beginning of the string
     memmove(s, s + b, length - b + 1);
 }
-
 // this function should take *s and replace the first lenofremove chars and replace them with replacer.
 // Note: replacer can be longer or shorter than lenofremove
 // Note: we will NOT free replacer here, we will do it in the state machine
@@ -124,6 +151,14 @@ void addToo(char *string, char *add)
 }
 bool isValidName(char *s)
 {
+    while (*s)
+    {
+        if (!isalnum(*s))
+        {
+            return false; // Not alphanumeric
+        }
+        s++;
+    }
     return true;
 }
 char *safeStrdup(char *s)
@@ -143,7 +178,7 @@ Macro *defMacro(char *name, char *val, Macro *lastMacro)
 {
     if (name == NULL || val == NULL)
     {
-        DIE("defMacro received a NULL parameter: %s", "Invalid input");
+        DIE("defMacro received a NULL parameter: %s or %s", name, val);
     }
     if (!isValidName(name))
     {
@@ -162,6 +197,19 @@ Macro *defMacro(char *name, char *val, Macro *lastMacro)
         lastMacro->next = madeMacro;
     }
     return madeMacro;
+}
+
+Macro *searchMacros(char *name, Macro *starterMacro)
+{
+    if (starterMacro == NULL)
+    {
+        return NULL;
+    }
+    if (strcmp(starterMacro->name, name) == 0)
+    {
+        return starterMacro;
+    }
+    return searchMacros(name, starterMacro->next);
 }
 
 void send_test_1()
@@ -202,12 +250,72 @@ void readStreamTest2()
     readStream(string, myStuff, 17);
     printf("%s\n", string);
 }
+void expandBufferTest1()
+{
+    printf("### Buffer Test 1: \n");
+    Files *myStuff = initializeFileStream(test_filenames);
+    char *string = (char *)malloc(sizeof(char) * 3);
+    strcpy(string, "hi");
+    bool success = expandBuffer(string, myStuff);
+    printf("%s,%d\n", string, success);
+}
+void expandBufferTest2()
+{
+    printf("### Buffer Test 2: \n");
+    Files *myStuff = initializeFileStream(test_filenames);
+    char *string = (char *)malloc(sizeof(char) * 20);
+    strcpy(string, "1234567890123456789");
+    bool success = expandBuffer(string, myStuff);
+    printf("%s,%d\n", string, success);
+}
+void searchMacrosTest1()
+{
+    printf("### Search Macros Test 1: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "name");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    char *string2 = (char *)malloc(sizeof(char) * 10);
+    strcpy(string2, "name2");
+    char *this2 = (char *)malloc(sizeof(char) * 10);
+    strcpy(this2, "value2");
+    Macro *hold1 = defMacro(string, this, NULL);
+    Macro *hold2 = defMacro(string2, this2, hold1);
+    printf("Search for something there: %s\n", searchMacros("name2", hold1)->name);
+    printf("Search for something not there: %d\n", (NULL == searchMacros("name3", hold1)));
+}
+void testIsValidName()
+{
+    printf("### Isvalidname test 1: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "$$");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    Macro *hold1 = defMacro(string, this, NULL);
+    return;
+}
+void testRemoveAndReplace()
+{
+    printf("### Remove and Replace test 1: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "$$");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    removeAndReplace(this, 1, string);
+    printf("%s\n", this);
+}
 void tests()
 {
     send_test_1();
     send_test_2();
     readStreamTest1();
     readStreamTest2();
+    expandBufferTest1();
+    expandBufferTest2();
+    searchMacrosTest1();
+    testRemoveAndReplace();
+
+    testIsValidName(); // note this throws an error, so ALL tests should be before it if possible
 }
 
 int main(int argc, char *argv[])
