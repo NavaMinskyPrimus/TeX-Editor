@@ -45,36 +45,40 @@ Files *initializeFileStream(char **filenamelist)
 }
 
 // We should double what is in the buffer, doubling it's memory if need be.
-bool expandBuffer(char *buffer, Files *filesToRead)
+// returns negative upon completion of the file stream. otherwise, returns the buffer's new capacity
+Buffer *expandBuffer(Buffer *data, Files *filesToRead)
 {
-    if (buffer == NULL || filesToRead == NULL)
+    if (data == NULL || filesToRead == NULL)
     {
-        return false;
+        DIE("bad inputs to ExpandBuffer: %s or files are NULL", "");
     }
-    size_t capacity = malloc_usable_size(buffer);
-    size_t currentLength = strlen(buffer);
+    char *buffer = data->data;
+    int bufferSize = data->alocatedSize;
+    size_t capacity = bufferSize;
+    size_t currentLength = data->sizeOfData;
     size_t requiredLength = currentLength * 2; // Double the current length
 
     // Check if the current capacity is enough
     if (requiredLength + 1 > capacity) // don't forget null termination :)
     {
-        char *newBuffer = realloc(buffer, capacity * 2 * sizeof(char));
+        capacity = capacity * 2;
+        char *newBuffer = realloc(buffer, capacity * sizeof(char));
         if (newBuffer == NULL)
         {
             // Reallocation failed, can this happen, idk but I keep getting warnings so maybe this'll fix it
-            return false;
+            DIE("Failed to alocate memory in expandbuffer %s", "");
         }
 
-        buffer = newBuffer;
+        data->data = newBuffer;
     }
 
     // Read 'currentLength' characters from the file stream into the buffer starting at currentLength
-    int bytesRead = readStream(buffer + currentLength, filesToRead, currentLength);
+    int bytesRead = readStream(data->data + currentLength, filesToRead, currentLength);
     if (bytesRead < currentLength)
     {
-        return false;
+        return -1 * capacity;
     }
-    return true;
+    return capacity;
 }
 
 // This function takes *s and shifts it over, freeing the first b chars and sending them to stdout. YAY!!
@@ -100,7 +104,7 @@ void send(char *s, int b)
 // this function should take *s and replace the first lenofremove chars and replace them with replacer.
 // Note: replacer can be longer or shorter than lenofremove
 // Note: we will NOT free replacer here, we will do it in the state machine
-void removeAndReplace(char *s, int lenOfRemove, char *replacer)
+int removeAndReplace(char *s, int lenOfRemove, char *replacer, int sSize)
 {
     if (s == NULL || lenOfRemove < 0 || replacer == NULL)
     {
@@ -113,41 +117,43 @@ void removeAndReplace(char *s, int lenOfRemove, char *replacer)
         WARN("Input to removeandreplace was strange, %d larger then langth of %s", lenOfRemove, s);
     }
     size_t newLength = sLength - lenOfRemove + replacerLength;
-    size_t holder = malloc_usable_size(s);
+    size_t holder = sSize;
 
     while (holder < newLength + 1)
     {
         holder *= 2;
     }
-    if (holder != malloc_usable_size(s))
+    if (holder != sSize)
     {
         s = realloc(s, holder);
     }
     memmove(s + strlen(replacer), s + lenOfRemove, strlen(s) - lenOfRemove + 1); // shifts the memobry so that the stuff after the removed bit is in the right spot
     memcpy(s, replacer, strlen(replacer));
+    return holder;
 }
 
 // function to add stuff to a string
-void addToo(char *string, char *add)
+int addToo(char *string, char *add, int sSize)
 {
     if (string == NULL)
     {
-        string = (char *)malloc(10);
+        string = (char *)malloc(strlen(add));
         strcpy(string, add);
-        return;
+        return strlen(add);
     }
     size_t length = strlen(string) + strlen(add);
-    size_t holder = malloc_usable_size(string);
+    size_t holder = sSize;
     while (holder < length + 1)
     {
         holder *= 2;
     }
 
-    if (holder != malloc_usable_size(string))
+    if (holder != sSize)
     {
         string = realloc(string, holder);
     }
     memcpy(string + strlen(string), add, strlen(add));
+    return holder;
 }
 bool isValidName(char *s)
 {
@@ -174,8 +180,12 @@ char *safeStrdup(char *s)
     }
     return dup;
 }
-Macro *defMacro(char *name, char *val, Macro *lastMacro)
+Macro *defMacro(char *name, char *val, Macro *firstMacro)
 {
+    if (searchMacros(name, firstMacro) != NULL)
+    {
+        DIE("cannot redefine %s", name);
+    }
     if (name == NULL || val == NULL)
     {
         DIE("defMacro received a NULL parameter: %s or %s", name, val);
@@ -184,17 +194,25 @@ Macro *defMacro(char *name, char *val, Macro *lastMacro)
     {
         DIE("Invalid macro name: %s", name);
     }
-    // alocate that memory!
+    if (firstMacro == NULL)
+    {
+    }
     Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
     // define the macro's stuff
     madeMacro->name = safeStrdup(name);
     madeMacro->value = safeStrdup(val);
     madeMacro->next = NULL;
-    // append macro to linked list. I feel like we're just rfreeing null below, but better safe than sorry.
-    if (lastMacro != NULL)
+    if (firstMacro != NULL)
     {
-        free(lastMacro->next);
-        lastMacro->next = madeMacro;
+        Macro *holder = firstMacro;
+        while (holder->next != NULL)
+        {
+            holder = holder->next;
+        }
+
+        // alocate that memory!
+
+        holder->next = madeMacro;
     }
     return madeMacro;
 }
@@ -210,6 +228,106 @@ Macro *searchMacros(char *name, Macro *starterMacro)
         return starterMacro;
     }
     return searchMacros(name, starterMacro->next);
+}
+int expandAfter(char *input, Macro *first, int inputsize)
+{
+}
+int undef(char *input, Macro *first, int inputsize)
+{
+}
+int expandIf(char *input, Macro *first, int inputsize)
+{
+}
+int ifDef(char *input, Macro *first, int inputsize)
+{
+}
+int userDefMacro(char *input, Macro *first, int inputsize, Macro *this)
+{
+}
+
+int def(char *input, Macro *first, int inputsize)
+{
+    char *name = (char *)malloc((sizeof(char *)) * 10);
+    int nameSize = 10;
+    char *c = (char *)malloc((sizeof(char *)) * 2);
+    for (int i = 5; i < inputsize; i++)
+    {
+        if (input[i] == '{')
+        {
+            break;
+        }
+        if (isalnum(input[i]))
+        {
+            strcpy(c, &input[i]);
+            nameSize = addToo(name, c, nameSize);
+        }
+        else
+        {
+            DIE("non-alphanumeric character in macro name, %c", input[i]);
+        }
+    }
+    printf("%s", name);
+}
+int expandMacro(char *input, Macro *first, int inputsize) // we have checked, this is in fact pointing at the right thing, yay!
+{
+}
+int expandText(char *input, Macro *first, int inputSize)
+{
+    State state = NORMAL;
+    for (int i = 0; i < strlen(input); i++)
+    {
+        char firstchar = input[i];
+        switch (state)
+        {
+        case NORMAL:
+            switch (firstchar)
+            {
+            case '\\':
+                state = BACKSLASH;
+                break;
+            case '%':
+                state = COMMENT;
+                break;
+            default:
+                break;
+            }
+            break;
+        case COMMENT:
+            switch (firstchar)
+            {
+            case '\n':
+                state = NORMAL;
+                break;
+            default:
+                break;
+            }
+        case BACKSLASH:
+            if (strchr("#\\{}%", firstchar) != NULL)
+            {
+                char *pass = (char *)malloc(sizeof(char) * 2);
+                pass[0] = firstchar;
+                inputSize = removeAndReplace(input + i - 1, 2, pass, inputSize);
+            }
+            else if (isalnum(firstchar))
+            {
+                state = MACRO_NAME;
+                i -= 1;
+            }
+            else
+            {
+                DIE("Non alpha-numeric macro name element, %c", firstchar);
+            }
+            break;
+        case MACRO_NAME:
+            int hold = expandMacro(input + i - 1, first, inputSize - i + 1);
+            inputSize = hold + i - 1;
+            state = NORMAL;
+            i -= 1;
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void send_test_1()
@@ -254,10 +372,14 @@ void expandBufferTest1()
 {
     printf("### Buffer Test 1: \n");
     Files *myStuff = initializeFileStream(test_filenames);
-    char *string = (char *)malloc(sizeof(char) * 3);
+    char *string = (char *)malloc(sizeof(char *) * 3);
     strcpy(string, "hi");
-    bool success = expandBuffer(string, myStuff);
-    printf("%s,%d\n", string, success);
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer *));
+    buffer->alocatedSize = 3;
+    buffer->data = string;
+    buffer->sizeOfData = 3;
+    int success = expandBuffer(buffer, myStuff);
+    printf("%s,%d\n", buffer->data, success);
 }
 void expandBufferTest2()
 {
@@ -265,8 +387,12 @@ void expandBufferTest2()
     Files *myStuff = initializeFileStream(test_filenames);
     char *string = (char *)malloc(sizeof(char) * 20);
     strcpy(string, "1234567890123456789");
-    bool success = expandBuffer(string, myStuff);
-    printf("%s,%d\n", string, success);
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer *));
+    buffer->alocatedSize = 20;
+    buffer->data = string;
+    buffer->sizeOfData = 20;
+    int success = expandBuffer(buffer, myStuff);
+    printf("%s,%d\n", buffer->data, success);
 }
 void searchMacrosTest1()
 {
@@ -281,50 +407,74 @@ void searchMacrosTest1()
     strcpy(this2, "value2");
     Macro *hold1 = defMacro(string, this, NULL);
     Macro *hold2 = defMacro(string2, this2, hold1);
-    printf("Search for something there: %s\n", searchMacros("name2", hold1)->name);
+    /*printf("Search for something there: %s\n", searchMacros("name2", hold1)->name);
     printf("Search for something not there: %d\n", (NULL == searchMacros("name3", hold1)));
-}
-void testIsValidName()
-{
-    printf("### Isvalidname test 1: \n");
-    char *string = (char *)malloc(sizeof(char) * 10);
-    strcpy(string, "$$");
-    char *this = (char *)malloc(sizeof(char) * 10);
-    strcpy(this, "value");
-    Macro *hold1 = defMacro(string, this, NULL);
-    return;
-}
-void testRemoveAndReplace()
-{
-    printf("### Remove and Replace test 1: \n");
-    char *string = (char *)malloc(sizeof(char) * 10);
-    strcpy(string, "$$");
-    char *this = (char *)malloc(sizeof(char) * 10);
-    strcpy(this, "value");
-    removeAndReplace(this, 1, string);
-    printf("%s\n", this);
-}
-void tests()
-{
-    send_test_1();
-    send_test_2();
-    readStreamTest1();
-    readStreamTest2();
-    expandBufferTest1();
-    expandBufferTest2();
-    searchMacrosTest1();
-    testRemoveAndReplace();
+    */
+} 
+ void testIsValidName()
+ {
+     printf("### Isvalidname test 1: \n");
+     char *string = (char *)malloc(sizeof(char) * 10);
+     strcpy(string, "$$");
+     char *this = (char *)malloc(sizeof(char) * 10);
+     strcpy(this, "value");
+     Macro *hold1 = defMacro(string, this, NULL);
+     return;
+ }
+ void testRemoveAndReplace1()
+ {
+     printf("### Remove and Replace test 1: \n");
+     char *string = (char *)malloc(sizeof(char) * 10);
+     strcpy(string, "$$");
+     char *this = (char *)malloc(sizeof(char) * 10);
+     strcpy(this, "value");
+     removeAndReplace(this, 1, string, 10);
+     printf("%s\n", this);
+ }
+ void testRemoveAndReplace2()
+ {
+     printf("### Remove and Replace test 2: \n");
+     char *string = (char *)malloc(sizeof(char) * 10);
+     strcpy(string, "double");
+     char *this = (char *)malloc(sizeof(char) * 10);
+     strcpy(this, "value");
+     int d = removeAndReplace(this, 1, string, 10);
+     printf("%d\n", d);
+ }
+ void tests()
+ {
+     send_test_1();
+     send_test_2();
+     readStreamTest1();
+     readStreamTest2();
+     expandBufferTest1();
+     expandBufferTest2();
+     searchMacrosTest1();
+     testRemoveAndReplace1();
+     testRemoveAndReplace2();
+ }
 
-    testIsValidName(); // note this throws an error, so ALL tests should be before it if possible
-}
+ int main(int argc, char *argv[])
+ {
+     if (argc = 1)
+     {
+         tests();
+     }
+     else
+     {
+     }
+     char *name = (char *)malloc(sizeof(char *) * 10);
+     char *val = (char *)malloc(sizeof(char *) * 10);
+     strcpy(name, "name");
+     strcpy(val, "val");
 
-int main(int argc, char *argv[])
-{
-    if (argc = 1)
-    {
-        tests();
-    }
-    else
-    {
-    }
-}
+     Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
+     // define the macro's stuff
+     madeMacro->name = safeStrdup(name);
+     madeMacro->value = safeStrdup(val);
+     madeMacro->next = NULL;
+
+     char *text = (char *)malloc(sizeof(char *) * 10);
+     strcpy(text, "\\def{}");
+     expandMacro(text, madeMacro, 10);
+ }

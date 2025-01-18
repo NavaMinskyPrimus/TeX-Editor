@@ -36,15 +36,18 @@ typedef struct Files
 
 } Files;
 
-int readStream(char *destination, Files *fileStream, int n);
-Files *initializeFileStream(char **filenamelist);
-bool expandBuffer(char *buffer, Files *filesToRead);
-void send(char *s, int b);
-void removeAndReplace(char *s, int lenOfRemove, char *replacer);
+typedef struct Buffer
+{
+    int alocatedSize;
+    char *data;
+    int sizeOfData;
+} Buffer;
 
-// function to add stuff to a string
-void addToo(char *string, char *add);
-bool isValidName(char *s);
-char *safeStrdup(char *s);
-Macro *defMacro(char *name, char *val, Macro *lastMacro);
-Macro *searchMacros(char *name, Macro *starterMacro);
+typedef enum
+{
+    NORMAL,
+    COMMENT,
+    BACKSLASH,
+    MACRO_NAME,
+    PARSING_ARGS,
+} State;
