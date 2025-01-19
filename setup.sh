@@ -3,5 +3,5 @@
 TMPDIR=$(pwd)
 
 cd $TESTDIR
-cp AnotherTry $TMPDIR
-alias run="valgrind -q ./AnotherTry"
+cp proj1 $TMPDIR
+alias run="valgrind -q ./proj1"

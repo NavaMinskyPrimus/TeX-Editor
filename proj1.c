@@ -196,6 +196,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         while (start + i >= buffer->sizeOfData)
         {
             expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
+            i++;
         }
         if (buffer->data[start + i] == '{')
         {
@@ -437,11 +438,11 @@ int main(int argc, char *argv[])
         send_test_1();
         testRemoveAndReplace1();
         getNametest();
-        //getArgtest();
+        // getArgtest();
         searchMacroTest();
         initializeMacroTest();
         testRemoveAndReplace2();
-        //defTest();
+        // defTest();
     }
     else
     {
