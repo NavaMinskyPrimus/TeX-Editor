@@ -1,18 +1,13 @@
 #include "proj1.h"
 
-Files *initializeFileStream(char **filenamelist)
+Files *initializeFileStream(char **filenamelist, int lengthOfList)
 {
-    size_t count = 0;
-    while (filenamelist[count] != NULL)
-    {
-        count++;
-    }
-    if (count < 1)
+    if (lengthOfList < 1)
     {
         WARN("Invalid initialization of file stream%s", "");
     }
-    Files *myStuff = (Files *)malloc(sizeof(Files)); // lots of error handling needed, make sure argc is at least 2 and stuff
-    myStuff->numberOfFiles = count;
+    Files *myStuff = (Files *)malloc(sizeof(Files));
+    myStuff->numberOfFiles = lengthOfList;
     myStuff->currentFile = fopen(filenamelist[0], "r");
     myStuff->filenames = filenamelist;
     myStuff->numCurrentFile = 0;
@@ -161,28 +156,37 @@ int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer)
     return holder;
 }
 
-// buffer->data + start is the start of something known to be a name of a macro. This function will get that name.
-char *getName(Buffer *buffer, int start)
+// buffer->data + start is the first letter of something known to be a name of a macro. This function will get that name.
+char *getName(Buffer *buffer, int start, Files *filestream)
 {
     char *string = buffer->data;
-    char *holder = (char *)malloc(sizeof(char) * 10);
     int i = 0;
 
     while (string[start + i] != '{')
     {
+        if (start + i >= buffer->sizeOfData)
+        {
+            expandBuffer(buffer, filestream, i);
+            string = buffer->data;
+        }
+        i++;
     }
+    char *holder = (char *)malloc(sizeof(char) * (i + 1));
+    memcpy(holder, buffer->data + start, i);
+    holder[i] = '\0';
+    return holder;
 }
 
 char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
 void testInitializeFileStream()
 {
-    Files *files = initializeFileStream(test_filenames);
+    Files *files = initializeFileStream(test_filenames, 3);
     cleanupFiles(files);
 }
 void expandBufferTest1()
 {
     printf("### Buffer Test 1: \n");
-    Files *myStuff = initializeFileStream(test_filenames);
+    Files *myStuff = initializeFileStream(test_filenames, 3);
     Buffer *buffer = initializeBuffer(myStuff);
     expandBuffer(buffer, myStuff, 10);
     for (int i = 0; i < buffer->sizeOfData; i++)
@@ -226,13 +230,43 @@ void testRemoveAndReplace1()
     free(buffer);
     free(string);
 }
+void getNametest()
+{
+    printf("### getName Test: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *b = initializeBuffer(filestream);
+    char *this = getName(b, 1, filestream);
+    printf("%s\n", this);
+    free(this);
+    free(b->data);
+    free(b);
+    cleanupFiles(filestream);
+}
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
-    testInitializeFileStream();
-    expandBufferTest1();
-    send_test_1();
-    testRemoveAndReplace1();
+    if (argc == 0)
+    {
+        testInitializeFileStream();
+        expandBufferTest1();
+        send_test_1();
+        testRemoveAndReplace1();
+        getNametest();
+    }
+    else
+    {
+        char **filenames = (char **)malloc(sizeof(char *) * (argc - 1));
+        for (int i = 0; i < argc - 1; i++)
+        {
+            filenames[i] = argv[i + 1];
+        }
+        Files *filestream = initializeFileStream(filenames, argc - 1);
+        Buffer *buffer = initializeBuffer(filestream);
+        expandBuffer(buffer, filestream, 10);
+        send(buffer, 10);
+        cleanupFiles(filestream);
+        free(buffer->data);
+        free(buffer);
+        free(filenames);
+    }
 }

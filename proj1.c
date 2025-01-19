@@ -133,7 +133,7 @@ int removeAndReplace(char *s, int lenOfRemove, char *replacer, int sSize)
 }
 
 // function to add stuff to a string
-int addToo(char *string, char *add, int sSize)
+int addTo(char *string, char *add, int sSize)
 {
     if (string == NULL)
     {
@@ -410,71 +410,71 @@ void searchMacrosTest1()
     /*printf("Search for something there: %s\n", searchMacros("name2", hold1)->name);
     printf("Search for something not there: %d\n", (NULL == searchMacros("name3", hold1)));
     */
-} 
- void testIsValidName()
- {
-     printf("### Isvalidname test 1: \n");
-     char *string = (char *)malloc(sizeof(char) * 10);
-     strcpy(string, "$$");
-     char *this = (char *)malloc(sizeof(char) * 10);
-     strcpy(this, "value");
-     Macro *hold1 = defMacro(string, this, NULL);
-     return;
- }
- void testRemoveAndReplace1()
- {
-     printf("### Remove and Replace test 1: \n");
-     char *string = (char *)malloc(sizeof(char) * 10);
-     strcpy(string, "$$");
-     char *this = (char *)malloc(sizeof(char) * 10);
-     strcpy(this, "value");
-     removeAndReplace(this, 1, string, 10);
-     printf("%s\n", this);
- }
- void testRemoveAndReplace2()
- {
-     printf("### Remove and Replace test 2: \n");
-     char *string = (char *)malloc(sizeof(char) * 10);
-     strcpy(string, "double");
-     char *this = (char *)malloc(sizeof(char) * 10);
-     strcpy(this, "value");
-     int d = removeAndReplace(this, 1, string, 10);
-     printf("%d\n", d);
- }
- void tests()
- {
-     send_test_1();
-     send_test_2();
-     readStreamTest1();
-     readStreamTest2();
-     expandBufferTest1();
-     expandBufferTest2();
-     searchMacrosTest1();
-     testRemoveAndReplace1();
-     testRemoveAndReplace2();
- }
+}
+void testIsValidName()
+{
+    printf("### Isvalidname test 1: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "$$");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    Macro *hold1 = defMacro(string, this, NULL);
+    return;
+}
+void testRemoveAndReplace1()
+{
+    printf("### Remove and Replace test 1: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "$$");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    removeAndReplace(this, 1, string, 10);
+    printf("%s\n", this);
+}
+void testRemoveAndReplace2()
+{
+    printf("### Remove and Replace test 2: \n");
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "double");
+    char *this = (char *)malloc(sizeof(char) * 10);
+    strcpy(this, "value");
+    int d = removeAndReplace(this, 1, string, 10);
+    printf("%d\n", d);
+}
+void tests()
+{
+    send_test_1();
+    send_test_2();
+    readStreamTest1();
+    readStreamTest2();
+    expandBufferTest1();
+    expandBufferTest2();
+    searchMacrosTest1();
+    testRemoveAndReplace1();
+    testRemoveAndReplace2();
+}
 
- int main(int argc, char *argv[])
- {
-     if (argc = 1)
-     {
-         tests();
-     }
-     else
-     {
-     }
-     char *name = (char *)malloc(sizeof(char *) * 10);
-     char *val = (char *)malloc(sizeof(char *) * 10);
-     strcpy(name, "name");
-     strcpy(val, "val");
+int main(int argc, char *argv[])
+{
+    if (argc = 1)
+    {
+        tests();
+    }
+    else
+    {
+    }
+    char *name = (char *)malloc(sizeof(char *) * 10);
+    char *val = (char *)malloc(sizeof(char *) * 10);
+    strcpy(name, "name");
+    strcpy(val, "val");
 
-     Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
-     // define the macro's stuff
-     madeMacro->name = safeStrdup(name);
-     madeMacro->value = safeStrdup(val);
-     madeMacro->next = NULL;
+    Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
+    // define the macro's stuff
+    madeMacro->name = safeStrdup(name);
+    madeMacro->value = safeStrdup(val);
+    madeMacro->next = NULL;
 
-     char *text = (char *)malloc(sizeof(char *) * 10);
-     strcpy(text, "\\def{}");
-     expandMacro(text, madeMacro, 10);
- }
+    char *text = (char *)malloc(sizeof(char *) * 10);
+    strcpy(text, "\\def{}");
+    expandMacro(text, madeMacro, 10);
+}
