@@ -98,7 +98,6 @@ bool expandBuffer(Buffer *buffer, Files *fileStream, int n) // make this return 
         }
     }
     int bytesRead = n - leftToRead;
-    printf("%d", leftToRead);
     // Update the buffer size and null-terminate
     buffer->sizeOfData += bytesRead;
     return (leftToRead == 0);
@@ -171,8 +170,9 @@ char *getName(Buffer *buffer, int start, Files *filestream)
     {
         if (start + i >= buffer->sizeOfData)
         {
-            expandBuffer(buffer, filestream, i);
+            bool warn = expandBuffer(buffer, filestream, i);
             string = buffer->data;
+            if(!warn){DIE("BAD%s","");}
         }
         i++;
         if (start + i == buffer->sizeOfData)
@@ -426,7 +426,7 @@ void expandBufferTest2()
         printf("%c", buffer->data[i]);
     }
     printf("\n");
-    printf("%d",this);
+    printf("%d\n",this);
     cleanupFiles(myStuff);
     free(buffer->data); // Free the string
     free(buffer);
@@ -458,7 +458,7 @@ int main(int argc, char *argv[])
         send_test_1();
         testRemoveAndReplace1();
         getNametest();
-        //getArgtest();
+        getArgtest();
         searchMacroTest();
         initializeMacroTest();
         testRemoveAndReplace2();
