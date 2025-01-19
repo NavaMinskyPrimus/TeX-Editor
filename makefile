@@ -1,12 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic -Werror -O3
 
-TARGETS = AnotherTry
+TARGETS = proj1
 DEPS = proj1.h
 TESTS = $(wildcard *.t)
-
-AnotherTry: AnotherTry.c $(DEPS)
-	$(CC) $(CFLAGS) -o AnotherTry AnotherTry.c
 
 all: $(TARGETS)
 
