@@ -36,7 +36,7 @@ Buffer *initializeBuffer(Files *fileStream)
     return buffer;
 }
 
-void expandBuffer(Buffer *buffer, Files *fileStream, int n)
+void expandBuffer(Buffer *buffer, Files *fileStream, int n) // make this return false if you reach the end of the filestream
 {
     if (buffer == NULL || fileStream == NULL)
     {
@@ -166,7 +166,7 @@ char *getName(Buffer *buffer, int start, Files *filestream)
     {
         if (start + i >= buffer->sizeOfData)
         {
-            expandBuffer(buffer, filestream, i);
+            expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
             string = buffer->data;
         }
         i++;
@@ -174,6 +174,33 @@ char *getName(Buffer *buffer, int start, Files *filestream)
     char *holder = (char *)malloc(sizeof(char) * (i + 1));
     memcpy(holder, buffer->data + start, i);
     holder[i] = '\0';
+    return holder;
+}
+// buffer->data + start is the first letter of something known to be an argument of a macro.
+// This function will get that argument and returns it as a string
+char *getArg(Buffer *buffer, int start, Files *filestream)
+{
+    int balance = 1;
+    int i = 0;
+    while (balance != 0)
+    {
+        if (start + i > buffer->sizeOfData)
+        {
+            expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
+        }
+        if (buffer->data[start + i] == '{')
+        {
+            balance += 1;
+        }
+        if (buffer->data[start + i] == '}')
+        {
+            balance -= 1;
+        }
+        i++;
+    }
+    char *holder = (char *)malloc(sizeof(char) * (i));
+    memcpy(holder, buffer->data + start, i - 1);
+    holder[i - 1] = '\0';
     return holder;
 }
 
@@ -242,16 +269,30 @@ void getNametest()
     free(b);
     cleanupFiles(filestream);
 }
+void getArgtest()
+{
+
+    printf("### getarg Test: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *b = initializeBuffer(filestream);
+    char *this = getArg(b, 6, filestream);
+    printf("%s\n", this);
+    free(this);
+    free(b->data);
+    free(b);
+    cleanupFiles(filestream);
+}
 
 int main(int argc, char *argv[])
 {
-    if (argc == 0)
+    if (argc == 1)
     {
         testInitializeFileStream();
         expandBufferTest1();
         send_test_1();
         testRemoveAndReplace1();
         getNametest();
+        getArgtest();
     }
     else
     {

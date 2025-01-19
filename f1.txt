@@ -1,0 +1,16 @@
+This is some text
+and I'll terminate it with an EOF!
+'EOF'
+echo CRAM1737307452.741216 19 $?
+cat f1.txt
+echo CRAM1737307452.741216 29 $?
+echo foo bar
+echo CRAM1737307452.741216 36 $?
+ls
+echo CRAM1737307452.741216 43 $?
+touch foo.txt
+echo CRAM1737307452.741216 44 $?
+touch bar.txt
+echo CRAM1737307452.741216 45 $?
+ls
+echo CRAM1737307452.741216 50 $?
