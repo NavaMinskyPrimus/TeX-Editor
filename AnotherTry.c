@@ -184,7 +184,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
     int i = 0;
     while (balance != 0)
     {
-        if (start + i > buffer->sizeOfData)
+        while (start + i >= buffer->sizeOfData)
         {
             expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
         }
