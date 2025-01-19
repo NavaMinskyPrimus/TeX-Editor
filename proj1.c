@@ -1,4 +1,4 @@
-#include "proj1.h"
+/*#include "proj1.h"
 
 // this function reads the next n chars out of the stream IF IT CAN if it can't it says how many it did read.
 int readStream(char *destination, Files *fileStream, int n)
@@ -409,7 +409,7 @@ void searchMacrosTest1()
     Macro *hold2 = defMacro(string2, this2, hold1);
     /*printf("Search for something there: %s\n", searchMacros("name2", hold1)->name);
     printf("Search for something not there: %d\n", (NULL == searchMacros("name3", hold1)));
-    */
+    *//*
 }
 void testIsValidName()
 {
@@ -477,4 +477,4 @@ int main(int argc, char *argv[])
     char *text = (char *)malloc(sizeof(char *) * 10);
     strcpy(text, "\\def{}");
     expandMacro(text, madeMacro, 10);
-}
+}*/
