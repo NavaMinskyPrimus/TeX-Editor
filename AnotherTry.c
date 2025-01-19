@@ -29,62 +29,67 @@ void cleanupFiles(Files *files)
         free(files);
     }
 }
-
-// this function reads the next n chars out of the stream IF IT CAN if it can't it says how many it did read.
-int readStream(char *destination, Files *fileStream, int n)
+// this initializes from a char, it is imperfect but functions for now
+Buffer *initializeBuffer(Files *fileStream)
 {
-    int lefttoread = n;
-    int hold;
-    while (lefttoread > 0)
-    {
-        hold = fread(destination, sizeof(char), lefttoread, fileStream->currentFile);
-        destination += hold;
-        lefttoread -= hold;
-        if (lefttoread != 0 && fileStream->numCurrentFile < fileStream->numberOfFiles - 1)
-        {
-            fclose(fileStream->currentFile);
-            fileStream->numCurrentFile += 1;
-            fileStream->currentFile = fopen(fileStream->filenames[fileStream->numCurrentFile], "r");
-        }
-        else if (lefttoread != 0)
-        {
-            return n - lefttoread;
-        }
-    }
-    return n - lefttoread;
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
+    char *string = (char *)malloc(sizeof(char) * 10);
+    int i = fread(string, sizeof(char), 9, fileStream->currentFile);
+    buffer->alocatedSize = 10;
+    buffer->data = string;
+    buffer->sizeOfData = i;
+    return buffer;
 }
 
-Buffer *expandBufferByOne(Buffer *buffer, Files *filesToRead)
+void expandBuffer(Buffer *buffer, Files *fileStream, int n)
 {
-    if (buffer == NULL || filesToRead == NULL)
+    if (buffer == NULL || fileStream == NULL)
     {
         DIE("bad inputs to ExpandBuffer: buffer or files are note initialized%s", "");
     }
-    int bufferSize = buffer->alocatedSize;
-    size_t capacity = bufferSize;
-    int currentLength = buffer->sizeOfData;
-    size_t requiredLength = currentLength + 2; // Double the current length
-
-    // Check if the current capacity is enough
-    if (requiredLength > capacity) // don't forget null termination :)
+    int leftToRead = n;
+    int requiredSize = buffer->sizeOfData + n + 1; // +1 for null-termination
+    if (requiredSize > buffer->alocatedSize)
     {
-        capacity = capacity * 2;
-        buffer->data = realloc(buffer->data, capacity * sizeof(char));
-        if (buffer->data == NULL)
+        int newCapacity = buffer->alocatedSize;
+        while (newCapacity < requiredSize)
         {
-            DIE("Memory reallocation failed.%s", "");
+            newCapacity *= 2;
+        }
+
+        buffer->data = realloc(buffer->data, newCapacity);
+        buffer->alocatedSize = newCapacity;
+    }
+    char *destination = buffer->data + buffer->sizeOfData;
+    int hold;
+    while (leftToRead > 0)
+    {
+        hold = fread(destination, sizeof(char), leftToRead, fileStream->currentFile);
+        destination += hold;
+        leftToRead -= hold;
+
+        if (leftToRead > 0)
+        {
+            if (fileStream->numCurrentFile < fileStream->numberOfFiles - 1)
+            {
+                fclose(fileStream->currentFile);
+                fileStream->numCurrentFile += 1;
+                fileStream->currentFile = fopen(fileStream->filenames[fileStream->numCurrentFile], "r");
+                if (!fileStream->currentFile)
+                {
+                    DIE("Failed to open the next file in the stream.%s", "");
+                }
+            }
+            else
+            {
+                break; // No more files to read
+            }
         }
     }
-    buffer->alocatedSize = capacity;
-    // Read 'currentLength' characters from the file stream into the buffer starting at currentLength
-    char *data = buffer->data;
-    int bytesRead = readStream(data + currentLength, filesToRead, 1);
-    buffer->data = data;
-    if (bytesRead < currentLength)
-    {
-        return buffer;
-    }
-    return buffer;
+    int bytesRead = n - leftToRead;
+
+    // Update the buffer size and null-terminate
+    buffer->sizeOfData += bytesRead;
 }
 
 bool isValidName(char *s)
@@ -156,62 +161,38 @@ int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer)
     return holder;
 }
 
-char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
+// buffer->data + start is the start of something known to be a name of a macro. This function will get that name.
+char *getName(Buffer *buffer, int start)
+{
+    char *string = buffer->data;
+    char *holder = (char *)malloc(sizeof(char) * 10);
+    int i = 0;
 
+    while (string[start + i] != '{')
+    {
+    }
+}
+
+char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
 void testInitializeFileStream()
 {
     Files *files = initializeFileStream(test_filenames);
     cleanupFiles(files);
 }
-
-void readStreamTest1()
-{
-    printf("### Stream Test 1: \n");
-
-    Files *myStuff = initializeFileStream(test_filenames);
-    char *string = (char *)malloc(sizeof(char) * 11);
-    int bytesRead = readStream(string, myStuff, 10);
-    string[bytesRead] = '\0';
-    printf("%s\n", string);
-    cleanupFiles(myStuff);
-    free(string);
-}
-
-void readStreamTest2()
-{
-    printf("### Stream Test 2: \n");
-    Files *myStuff = initializeFileStream(test_filenames);
-    char *string = (char *)malloc(sizeof(char) * 50);
-    int hold = readStream(string, myStuff, 17);
-    string[hold] = '\0';
-    printf("%s\n", string);
-
-    cleanupFiles(myStuff);
-    free(string);
-}
-
 void expandBufferTest1()
 {
     printf("### Buffer Test 1: \n");
     Files *myStuff = initializeFileStream(test_filenames);
-    char *string = (char *)malloc(sizeof(char) * 3);
-    strcpy(string, "hi");
-    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
-    buffer->alocatedSize = 3;
-    buffer->data = string;
-    buffer->sizeOfData = 2;
-    expandBufferByOne(buffer, myStuff);
-    char *stuff = (char *)malloc(sizeof(char) * (buffer->sizeOfData + 1));
+    Buffer *buffer = initializeBuffer(myStuff);
+    expandBuffer(buffer, myStuff, 10);
     for (int i = 0; i < buffer->sizeOfData; i++)
     {
-        stuff[i] = buffer->data[i];
+        printf("%c", buffer->data[i]);
     }
-    stuff[buffer->sizeOfData] = '\0';
-    printf("%s,%d\n", stuff, buffer->alocatedSize);
+    printf("\n");
     cleanupFiles(myStuff);
     free(buffer->data); // Free the string
     free(buffer);
-    free(stuff);
 }
 void send_test_1()
 {
@@ -228,7 +209,6 @@ void send_test_1()
     free(buffer->data);
     free(buffer);
 }
-
 void testRemoveAndReplace1()
 {
     printf("### Remove and Replace test 1: \n");
@@ -252,8 +232,6 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
     testInitializeFileStream();
-    readStreamTest1();
-    readStreamTest2();
     expandBufferTest1();
     send_test_1();
     testRemoveAndReplace1();
