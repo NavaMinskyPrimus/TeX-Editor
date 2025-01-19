@@ -98,7 +98,7 @@ bool expandBuffer(Buffer *buffer, Files *fileStream, int n) // make this return 
         }
     }
     int bytesRead = n - leftToRead;
-
+    printf("%d", leftToRead);
     // Update the buffer size and null-terminate
     buffer->sizeOfData += bytesRead;
     return (leftToRead == 0);
@@ -191,12 +191,15 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
 {
     int balance = 1;
     int i = 0;
-    while (balance != 0 && i < 10)
+    while (balance != 0)
     {
         while (start + i >= buffer->sizeOfData)
         {
-            expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
-            i++;
+            bool worked = expandBuffer(buffer, filestream, i); // TODO: deal with end of filestream
+            if (!worked)
+            {
+                DIE("%s", "");
+            }
         }
         if (buffer->data[start + i] == '{')
         {
@@ -412,6 +415,22 @@ void searchMacroTest()
     printf("%d,%d\n", searchMacros("name", macro2) == NULL, searchMacros("notname", macro2) == NULL);
     cleanupMacro(macro2);
 }
+void expandBufferTest2()
+{
+    printf("### Buffer Test 2: \n");
+    Files *myStuff = initializeFileStream(test_filenames2, 1);
+    Buffer *buffer = initializeBuffer(myStuff);
+    bool this = expandBuffer(buffer, myStuff, 10);
+    for (int i = 0; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
+    printf("%d",this);
+    cleanupFiles(myStuff);
+    free(buffer->data); // Free the string
+    free(buffer);
+}
 void initializeMacroTest()
 {
     printf("### initializeMacro Test: \n");
@@ -435,10 +454,11 @@ int main(int argc, char *argv[])
     {
         testInitializeFileStream();
         expandBufferTest1();
+        expandBufferTest2();
         send_test_1();
         testRemoveAndReplace1();
         getNametest();
-        // getArgtest();
+        //getArgtest();
         searchMacroTest();
         initializeMacroTest();
         testRemoveAndReplace2();
