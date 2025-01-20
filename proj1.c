@@ -239,6 +239,44 @@ Macro *searchMacros(char *name, Macro *starterMacro)
     }
     return searchMacros(name, starterMacro->next);
 }
+void printMacro(Macro *starterMacro)
+{
+    if (starterMacro == NULL)
+    {
+        return;
+    }
+    printf("Name: %s, Value: %s\n", starterMacro->name, starterMacro->value);
+    printMacro(starterMacro->next);
+    return;
+}
+Macro *removeMacro(char *name, Macro *starterMacro)
+{
+    if (starterMacro == NULL)
+    {
+        return NULL;
+    }
+    if (strcmp(starterMacro->name, name) == 0)
+    {
+        Macro *macro = starterMacro;
+        starterMacro = macro->next;
+        macro->next = NULL;
+        cleanupMacro(macro);
+        return starterMacro;
+    }
+    if (starterMacro->next == NULL)
+    {
+        return NULL;
+    }
+    if (strcmp(starterMacro->next->name, name) == 0)
+    {
+        Macro *macro = starterMacro->next;
+        starterMacro->next = macro->next;
+        macro->next = NULL;
+        cleanupMacro(macro);
+        return starterMacro;
+    }
+    return removeMacro(name, starterMacro->next);
+}
 bool isValidName(char *s, Macro *starterMacro)
 {
 
@@ -293,22 +331,30 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
 // it will parse the argument, build the macro needed, and remove the macro. Note start points at d,
 // not at the backslash
 
-void parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
+Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
 {
+    if (firstMacro == NULL)
+    {
+        WARN("your firstmacro called in parseDef is a NULL pointer, so you have not saved this macro!%s", "");
+    }
     int startOfArg1 = start + 4;
     char *name = getArg(buffer, startOfArg1, filestream);
     char *value = getArg(buffer, startOfArg1 + strlen(name) + 2, filestream);
     isValidName(name, firstMacro);
-    initializeMacro(name, value, firstMacro);
+    Macro *hold = initializeMacro(name, value, firstMacro);
+    if (firstMacro == NULL)
+    {
+        firstMacro = hold;
+    }
     int toberemoved = 8 + strlen(name) + strlen(value);
     if (buffer->sizeOfData <= toberemoved)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
     }
     removeAndReplace(buffer, toberemoved, "", start - 1);
-
     free(name);
     free(value);
+    return firstMacro;
 }
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be user defined.
 // It will also take the macro that it is. It will parse the argument, and change the text to be as it should be.
@@ -331,6 +377,29 @@ void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *
         }
     }
     free(plugin);
+}
+// this takes a buffer, a filestream, and a pointer to the start of a macro known to be undef specificly
+// it will parse the argument, remove the macro, and remove the macro. It will throw an error if the name
+// is not currenlty a macro. Note start points at u, not at the backslash.
+
+Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
+{
+    int startOfArg = start + 6;
+    char *name = getArg(buffer, startOfArg, filestream);
+    firstMacro = removeMacro(name, firstMacro);
+    if (firstMacro == NULL)
+    {
+        DIE("You cannot undef %s", name);
+    }
+    int toberemoved = 8 + strlen(name);
+    if (buffer->sizeOfData <= toberemoved)
+    {
+        expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
+    }
+    removeAndReplace(buffer, toberemoved, "", start - 1);
+
+    free(name);
+    return firstMacro;
 }
 
 char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
@@ -355,7 +424,7 @@ void expandBufferTest1()
     free(buffer->data); // Free the string
     free(buffer);
 }
-void send_test_1()
+void sendtest1()
 {
     printf("### Send Test 1: \n");
     char *this = (char *)malloc(sizeof(char) * 11);
@@ -515,8 +584,25 @@ void testUserDefParser()
     send(buffer, buffer->sizeOfData);
     printf("\n");
     cleanupMacro(macro);
-
     cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testUndef()
+{
+    printf("### Undef Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    Macro *macro = initializeMacro("Dont", "matter", NULL);
+    parseDef(buffer, 1, filestream, macro);
+    parseDef(buffer, 1, filestream, macro);
+    parseDef(buffer, 1, filestream, macro);
+    macro = parseUndef(buffer, 1, filestream, macro);
+    expandBuffer(buffer, filestream, 10);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    printMacro(macro);
+    cleanupBuffer(buffer);
+    cleanupMacro(macro);
     cleanupFiles(filestream);
 }
 
@@ -527,7 +613,7 @@ int main(int argc, char *argv[])
         testInitializeFileStream();
         expandBufferTest1();
         expandBufferTest2();
-        send_test_1();
+        sendtest1();
         testRemoveAndReplace1();
         getNametest();
         getArgtest();
@@ -536,7 +622,8 @@ int main(int argc, char *argv[])
         testRemoveAndReplace2();
         testRemoveAndReplace3();
         // defTest();
-        testUserDefParser();
+        // testUserDefParser();
+        testUndef();
     }
     else
     {
