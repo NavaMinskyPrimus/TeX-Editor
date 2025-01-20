@@ -202,7 +202,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         bool worked = true;
         while (start + i >= buffer->sizeOfData)
         {
-            worked = expandBuffer(buffer, filestream, i + 1); // TODO: deal with end of filestream
+            worked = expandBuffer(buffer, filestream, i + 1);
             if (!worked)
             {
                 break;
@@ -310,6 +310,29 @@ void parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
     free(name);
     free(value);
 }
+// this takes a buffer, a filestream, and a pointer to the start of a macro known to be user defined.
+// It will also take the macro that it is. It will parse the argument, and change the text to be as it should be.
+void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *macro)
+{
+    char *name = macro->name;
+    int nameLength = strlen(name);
+    int startOfArg = start + nameLength + 1;
+    char *plugin = getArg(buffer, startOfArg, filestream);
+    char *value = macro->value;
+    removeAndReplace(buffer, 1 + nameLength + 2 + strlen(plugin), value, start - 1);
+    int numberOfReplacements = 0;
+    int valueLen = strlen(value);
+    for (int i = 0; i < valueLen; i++)
+    {
+        if (value[i] == '#')
+        {
+            removeAndReplace(buffer, 1, plugin, start - 1 + i + numberOfReplacements * (strlen(plugin) - 1));
+            numberOfReplacements++;
+        }
+    }
+    free(plugin);
+}
+
 char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
 char *test_filenames2[] = {"testFile.txt"};
 void testInitializeFileStream()
@@ -395,7 +418,6 @@ void getNametest()
     free(b);
     cleanupFiles(filestream);
 }
-
 void getArgtest()
 {
 
@@ -458,7 +480,6 @@ void initializeMacroTest()
 }
 void defTest()
 {
-
     printf("### defTest Test: \n");
     Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *b = initializeBuffer(filestream);
@@ -472,7 +493,6 @@ void defTest()
     cleanupBuffer(b);
     cleanupMacro(macro);
 }
-
 void testRemoveAndReplace3()
 {
     printf("### Remove and Replace test 3,removing it all: \n");
@@ -482,6 +502,20 @@ void testRemoveAndReplace3()
     removeAndReplace(buffer, buffer->sizeOfData, "", 0);
     send(buffer, buffer->sizeOfData);
     printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testUserDefParser()
+{
+    printf("### User Def Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    Macro *macro = initializeMacro("name", "value # # # # #  ", NULL);
+    parseUserDefinedMacro(buffer, 1, filestream, macro);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupMacro(macro);
+
     cleanupBuffer(buffer);
     cleanupFiles(filestream);
 }
@@ -501,7 +535,8 @@ int main(int argc, char *argv[])
         initializeMacroTest();
         testRemoveAndReplace2();
         testRemoveAndReplace3();
-        defTest();
+        // defTest();
+        testUserDefParser();
     }
     else
     {
@@ -513,7 +548,8 @@ int main(int argc, char *argv[])
         Files *filestream = initializeFileStream(filenames, argc - 1);
         Buffer *buffer = initializeBuffer(filestream);
         expandBuffer(buffer, filestream, 10);
-        send(buffer, 10);
+        send(buffer, 2);
+        printf("\n");
         cleanupFiles(filestream);
         free(buffer->data);
         free(buffer);
