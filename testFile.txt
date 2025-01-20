@@ -1,1 +1,1 @@
-\def{name}{value}\def{name1}{value1}\def{name2}{value2}\undef{name}
+\ifdef{other}{then}{else}
