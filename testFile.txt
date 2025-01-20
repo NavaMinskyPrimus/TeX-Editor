@@ -1,1 +1,1 @@
-\name{
+\def{name}{value}hellohello
