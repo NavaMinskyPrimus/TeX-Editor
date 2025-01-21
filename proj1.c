@@ -1,5 +1,5 @@
 #include "proj1.h"
-
+Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsing, State state, Macro *firstMacro);
 Files *initializeFileStream(char **filenamelist, int lengthOfList)
 {
     if (lengthOfList < 1)
@@ -51,8 +51,8 @@ Buffer *initializeBuffer(Files *fileStream)
     buffer->sizeOfData = i;
     return buffer;
 }
-
-bool expandBuffer(Buffer *buffer, Files *fileStream, int n) // make this return false if you reach the end of the filestream
+// This returns false if you reach the end of the filestream
+bool expandBuffer(Buffer *buffer, Files *fileStream, int n)
 {
     if (buffer == NULL || fileStream == NULL)
     {
@@ -119,23 +119,29 @@ void send(Buffer *buffer, int b)
     fwrite(buffer->data, sizeof(char), b, stdout);
     if (b != length)
     {
-        memmove(buffer->data, buffer->data + b, length - b + 1);
+        memmove(buffer->data, buffer->data + b, length - b);
     }
+    buffer->sizeOfData = buffer->sizeOfData - b;
     // Shift the remaining characters to the beginning of the string
 }
 // this function should take *s and replace the first lenofremove chars and replace them with replacer.
 // Note: replacer can be longer or shorter than lenofremove
 // Note: we will NOT free replacer here, we will do it in the state machine
-int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start)
+int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Files *filestream)
 {
     if (b == NULL || lenOfRemove < 0 || replacer == NULL)
     {
         DIE("invalid input to removeAndReplace%s", "");
     }
     int replacerLength = strlen(replacer);
+    bool success = true;
     if (lenOfRemove > b->sizeOfData - start)
     {
-        WARN("Input to removeandreplace was strange, %d larger then length of data", lenOfRemove);
+        success = expandBuffer(b, filestream, lenOfRemove - b->sizeOfData + start);
+    }
+    if (!success)
+    {
+        DIE("You cannot remove more than there is in the file stream%s", "");
     }
     int newLength = b->sizeOfData - lenOfRemove + replacerLength;
     int holder = b->alocatedSize;
@@ -163,25 +169,23 @@ int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start)
 }
 
 // buffer->data + start is the first letter of something known to be a name of a macro.
-// This function will get that name and return it as a string
+// This function will get that name and return it as a string. Does not check if it is a valid name
 char *getName(Buffer *buffer, int start, Files *filestream)
 {
-    char *string = buffer->data;
     int i = 0;
-
-    while (string[start + i] != '{')
+    while (buffer->data[start + i] != '{')
     {
-        if (start + i >= buffer->sizeOfData)
+        bool worked = true;
+        i++;
+        while (start + i >= buffer->sizeOfData)
         {
-            bool warn = expandBuffer(buffer, filestream, i + 1);
-            string = buffer->data;
-            if (!warn)
+            worked = expandBuffer(buffer, filestream, i + 1);
+            if (!worked)
             {
                 break;
             }
         }
-        i++;
-        if (start + i == buffer->sizeOfData)
+        if (start + i >= buffer->sizeOfData)
         {
             DIE("Incomplete name in file stream%s", "");
         }
@@ -208,6 +212,10 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
                 break;
             }
         }
+        if (start + i >= buffer->sizeOfData)
+        {
+            DIE("Incomplete argument in file stream%s", "");
+        }
         if (buffer->data[start + i] == '{')
         {
             balance += 1;
@@ -221,10 +229,6 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
             i++;
         }
         i++;
-        if (start + i >= buffer->sizeOfData && !worked)
-        {
-            DIE("Incomplete argument in file stream%s", "");
-        }
     }
     char *holder = (char *)malloc(sizeof(char) * (i));
     memcpy(holder, buffer->data + start, i - 1);
@@ -335,10 +339,6 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
 
 Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
 {
-    if (firstMacro == NULL)
-    {
-        WARN("your firstmacro called in parseDef is a NULL pointer, so you have not saved this macro!%s", "");
-    }
     int startOfArg1 = start + 4;
     char *name = getArg(buffer, startOfArg1, filestream);
     char *value = getArg(buffer, startOfArg1 + strlen(name) + 2, filestream);
@@ -353,7 +353,7 @@ Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
     }
-    removeAndReplace(buffer, toberemoved, "", start - 1);
+    removeAndReplace(buffer, toberemoved, "", start - 1, filestream);
     free(name);
     free(value);
     return firstMacro;
@@ -367,14 +367,14 @@ void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *
     int startOfArg = start + nameLength + 1;
     char *plugin = getArg(buffer, startOfArg, filestream);
     char *value = macro->value;
-    removeAndReplace(buffer, 1 + nameLength + 2 + strlen(plugin), value, start - 1);
+    removeAndReplace(buffer, 1 + nameLength + 2 + strlen(plugin), value, start - 1, filestream);
     int numberOfReplacements = 0;
     int valueLen = strlen(value);
     for (int i = 0; i < valueLen; i++)
     {
         if (value[i] == '#')
         {
-            removeAndReplace(buffer, 1, plugin, start - 1 + i + numberOfReplacements * (strlen(plugin) - 1));
+            removeAndReplace(buffer, 1, plugin, start - 1 + i + numberOfReplacements * (strlen(plugin) - 1), filestream);
             numberOfReplacements++;
         }
     }
@@ -398,7 +398,7 @@ Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacr
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
     }
-    removeAndReplace(buffer, toberemoved, "", start - 1);
+    removeAndReplace(buffer, toberemoved, "", start - 1, filestream);
 
     free(name);
     return firstMacro;
@@ -412,7 +412,7 @@ void parseIf(Buffer *buffer, int start, Files *filestream)
     char *then = getArg(buffer, start + 3 + strlen(condition) + 2, filestream);
     char *otherwise = getArg(buffer, start + 3 + strlen(condition) + 2 + strlen(then) + 2, filestream);
     int sizeOfRemove = 1 + start + 3 + strlen(condition) + 2 + strlen(then) + 2 + strlen(otherwise);
-    if (strcmp(condition, "") == 0)
+    if (strcmp(condition, "") != 0)
     {
         while (sizeOfRemove >= buffer->sizeOfData - start)
         {
@@ -420,11 +420,11 @@ void parseIf(Buffer *buffer, int start, Files *filestream)
             expandBuffer(buffer, filestream, i);
             i++;
         }
-        removeAndReplace(buffer, sizeOfRemove, then, start - 1);
+        removeAndReplace(buffer, sizeOfRemove, then, start - 1, filestream);
     }
     else
     {
-        removeAndReplace(buffer, sizeOfRemove, otherwise, start - 1);
+        removeAndReplace(buffer, sizeOfRemove, otherwise, start - 1, filestream);
     }
     free(condition);
     free(then);
@@ -447,15 +447,159 @@ void parseIfDef(Buffer *buffer, int start, Files *filestream, Macro *startermacr
             expandBuffer(buffer, filestream, i);
             i++;
         }
-        removeAndReplace(buffer, sizeOfRemove, then, start - 1);
+        removeAndReplace(buffer, sizeOfRemove, then, start - 1, filestream);
     }
     else
     {
-        removeAndReplace(buffer, sizeOfRemove, otherwise, start - 1);
+        removeAndReplace(buffer, sizeOfRemove, otherwise, start - 1, filestream);
     }
     free(condition);
     free(then);
     free(otherwise);
+}
+
+void parseInclude(Buffer *b, int start, Files *filestream)
+{
+    char *path = getArg(b, start + 8, filestream);
+    char *nameOfIndluce[] = {path};
+    Files *littlefilestream = initializeFileStream(nameOfIndluce, 1);
+    Buffer *littleBuffer = initializeBuffer(littlefilestream);
+    int i = 10;
+    bool notFinished = expandBuffer(littleBuffer, littlefilestream, i);
+    while (notFinished)
+    {
+        notFinished = expandBuffer(littleBuffer, littlefilestream, i);
+        i = i * 2;
+    }
+    char *includethis = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
+    for (int j = 0; j < littleBuffer->sizeOfData; j++)
+    {
+        includethis[j] = littleBuffer->data[j];
+    }
+    includethis[littleBuffer->sizeOfData] = '\0';
+    removeAndReplace(b, 10 + strlen(path), includethis, start - 1, filestream);
+    free(path);
+    cleanupBuffer(littleBuffer);
+    cleanupFiles(littlefilestream);
+    free(includethis);
+}
+// TODO: this while function lmao
+void parseAfter()
+{
+}
+Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsing, State state, Macro *firstMacro)
+{
+    if (inAfter)
+    {
+        WARN("this is in expandafter, we haven't initialized this yet%s", "");
+    }
+    if (parsing >= buffer->sizeOfData && !inAfter)
+    {
+        bool unfinished = expandBuffer(buffer, filestream, 1);
+        if (!unfinished)
+        {
+            return firstMacro;
+        }
+    }
+    if (parsing >= buffer->sizeOfData && inAfter)
+    {
+        DIE("You have reached the end of the argument inside beforeAfter but the parser doesn't think so. There's an issue, idk what yet%s", "");
+    }
+    switch (state)
+    {
+    case NORMAL:
+        switch (buffer->data[parsing])
+        {
+        case '%':
+            removeAndReplace(buffer, 1, "", parsing, filestream);
+            return generalParser(buffer, filestream, inAfter, parsing, COMMENT, firstMacro);
+            break;
+        case '\\':
+            return generalParser(buffer, filestream, inAfter, parsing + 1, BACKSLASH, firstMacro);
+            break;
+        default:
+            if (!inAfter)
+            {
+                send(buffer, 1); // ERROR? Is there a world where you are outside of a macro but havne't sent it when we aren't in beforeafter? I don't think so, but this is a possible error spot
+                return generalParser(buffer, filestream, inAfter, 0, NORMAL, firstMacro);
+            }
+            else
+            {
+                return generalParser(buffer, filestream, inAfter, parsing + 1, NORMAL, firstMacro);
+            }
+            break;
+        }
+        break;
+    case COMMENT:
+        switch (buffer->data[parsing])
+        {
+        case '\n':
+            removeAndReplace(buffer, 1, "", parsing, filestream);
+            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            break;
+        default:
+            removeAndReplace(buffer, 1, "", parsing, filestream);
+            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            break;
+        }
+        break;
+    case BACKSLASH:
+        if (isalnum(buffer->data[parsing]))
+        {
+            return generalParser(buffer, filestream, inAfter, parsing, MACRO_NAME, firstMacro);
+        }
+        else if (buffer->data[parsing] == '\\' || buffer->data[parsing] == '%' || buffer->data[parsing] == '{' || buffer->data[parsing] == '}' || buffer->data[parsing] == '#')
+        {
+            removeAndReplace(buffer, 1, "", parsing - 1, filestream);
+            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+        }
+        else if (inAfter)
+        {
+            return generalParser(buffer, filestream, inAfter, parsing + 1, NORMAL, firstMacro);
+        }
+        else
+        {
+            send(buffer, 2);
+            return generalParser(buffer, filestream, inAfter, 0, NORMAL, firstMacro); // whenever anything gets sent, we should be at zero.
+        }
+        break;
+    case MACRO_NAME:
+    {
+        char *name = getName(buffer, parsing, filestream);
+        isValidName(name);
+        if (strcmp(name, "def") == 0)
+        {
+            firstMacro = parseDef(buffer, parsing, filestream, firstMacro);
+        }
+        else if (strcmp(name, "undef") == 0)
+        {
+            firstMacro = parseUndef(buffer, parsing, filestream, firstMacro);
+        }
+        else if (strcmp(name, "if") == 0)
+        {
+            parseIf(buffer, parsing, filestream);
+        }
+        else if (strcmp(name, "ifdef") == 0)
+        {
+            parseIfDef(buffer, parsing, filestream, firstMacro);
+        }
+        else if (strcmp(name, "include") == 0)
+        {
+            parseInclude(buffer, parsing, filestream);
+        }
+        else
+        {
+            Macro *userDefedMacro = searchMacros(name, firstMacro);
+            parseUserDefinedMacro(buffer, parsing, filestream, userDefedMacro);
+        }
+        free(name);
+        return generalParser(buffer, filestream, inAfter, parsing - 1, NORMAL, firstMacro);
+        break;
+    }
+    default:
+        return firstMacro;
+        break;
+    }
 }
 
 char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
@@ -500,15 +644,17 @@ void testRemoveAndReplace1()
     printf("### Remove and Replace test 1: \n");
     char *this = (char *)malloc(sizeof(char) * 11);
     strcpy(this, "testpassed");
+    Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
     buffer->alocatedSize = 11;
     buffer->data = this;
     buffer->sizeOfData = 10;
     char *string = (char *)malloc(sizeof(char) * 10);
     strcpy(string, "$$");
-    removeAndReplace(buffer, 1, string, 0);
+    removeAndReplace(buffer, 1, string, 0, filestream);
     send(buffer, buffer->sizeOfData);
     printf("\n");
+    cleanupFiles(filestream);
     free(buffer->data);
     free(buffer);
     free(string);
@@ -518,15 +664,17 @@ void testRemoveAndReplace2()
     printf("### Remove and Replace test 2: \n");
     char *this = (char *)malloc(sizeof(char) * 11);
     strcpy(this, "testpassed");
+    Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
     buffer->alocatedSize = 11;
     buffer->data = this;
     buffer->sizeOfData = 10;
     char *string = (char *)malloc(sizeof(char) * 20);
     strcpy(string, "bigbigbigbig");
-    removeAndReplace(buffer, 1, string, 5);
+    removeAndReplace(buffer, 1, string, 15, filestream);
     send(buffer, buffer->sizeOfData);
     printf("\n");
+    cleanupFiles(filestream);
     free(buffer->data);
     free(buffer);
     free(string);
@@ -534,7 +682,7 @@ void testRemoveAndReplace2()
 void getNametest()
 {
     printf("### getName Test 1: \n");
-    Files *filestream = initializeFileStream(test_filenames2, 3);
+    Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *b = initializeBuffer(filestream);
     char *this = getName(b, 1, filestream);
     printf("%s\n", this);
@@ -623,7 +771,7 @@ void testRemoveAndReplace3()
     Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *buffer = initializeBuffer(filestream);
     send(buffer, buffer->sizeOfData);
-    removeAndReplace(buffer, buffer->sizeOfData, "", 0);
+    removeAndReplace(buffer, buffer->sizeOfData, "", 0, filestream);
     send(buffer, buffer->sizeOfData);
     printf("\n");
     cleanupBuffer(buffer);
@@ -684,6 +832,17 @@ void testIfDef()
     cleanupBuffer(buffer);
     cleanupFiles(filestream);
 }
+void testInclude()
+{
+    printf("### Include Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    parseInclude(buffer, 1, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
 int main(int argc, char *argv[])
 {
     if (argc == 1)
@@ -693,8 +852,8 @@ int main(int argc, char *argv[])
         expandBufferTest2();
         sendtest1();
         testRemoveAndReplace1();
-        // getNametest();
-        // getArgtest();
+        getNametest();
+        //  getArgtest();
         searchMacroTest();
         initializeMacroTest();
         testRemoveAndReplace2();
@@ -702,8 +861,9 @@ int main(int argc, char *argv[])
         // defTest();
         // testUserDefParser();
         // testUndef();
-        testIf();
-        testIfDef();
+        // testIf();
+        // testIfDef();
+        // testInclude();
     }
     else
     {
@@ -715,8 +875,9 @@ int main(int argc, char *argv[])
         Files *filestream = initializeFileStream(filenames, argc - 1);
         Buffer *buffer = initializeBuffer(filestream);
         expandBuffer(buffer, filestream, 10);
-        send(buffer, 2);
+        Macro *firstMacro = generalParser(buffer, filestream, false, 0, NORMAL, NULL);
         printf("\n");
+        cleanupMacro(firstMacro);
         cleanupFiles(filestream);
         free(buffer->data);
         free(buffer);

@@ -1,1 +1,1 @@
-\if{}{then\{}{else}
+we're gonna include \def{hi}{value # # #} and also \if{}{then}{{else}} and maybe \include{include.txt}
