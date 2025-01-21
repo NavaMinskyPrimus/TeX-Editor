@@ -336,7 +336,7 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be def specificly
 // it will parse the argument, build the macro needed, and remove the macro. Note start points at d,
 // not at the backslash
-
+// TODO: this is broken in some way, relating specifically to it's call to remove and replace.
 Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
 {
     int startOfArg1 = start + 4;
@@ -353,7 +353,16 @@ Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
     }
+    for (int i = start; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
     removeAndReplace(buffer, toberemoved, "", start - 1, filestream);
+    for (int i = start; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
     free(name);
     free(value);
     return firstMacro;
@@ -384,7 +393,7 @@ void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *
 // it will parse the argument, undefine the macro, and remove the undef macro. It will throw an error if the name
 // is not currenlty a macro. Note start points at u, not at the backslash.
 
-Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
+Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro) // TOOD: this is broken, specifically when there is only one thing
 {
     int startOfArg = start + 6;
     char *name = getArg(buffer, startOfArg, filestream);
@@ -521,6 +530,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
             break;
         case '\\':
             return generalParser(buffer, filestream, inAfter, parsing + 1, BACKSLASH, firstMacro);
+
             break;
         default:
             if (!inAfter)
@@ -804,10 +814,7 @@ void testUndef()
     printf("### Undef Parser Test 1: \n");
     Files *filestream = initializeFileStream(test_filenames, 3);
     Buffer *buffer = initializeBuffer(filestream);
-    Macro *macro = initializeMacro("Dont", "matter", NULL);
-    parseDef(buffer, 1, filestream, macro);
-    parseDef(buffer, 1, filestream, macro);
-    parseDef(buffer, 1, filestream, macro);
+    Macro *macro = initializeMacro("dont", "matter", NULL);
     macro = parseUndef(buffer, 1, filestream, macro);
     expandBuffer(buffer, filestream, 10);
     send(buffer, buffer->sizeOfData);
@@ -881,11 +888,11 @@ int main(int argc, char *argv[])
         testRemoveAndReplace3();
         // defTest();
         // testUserDefParser();
-        // testUndef();
         // testIf();
         // testIfDef();
         // testInclude();*/
-        testExpandAfter();
+        // testExpandAfter();
+        testUndef();
     }
     else
     {

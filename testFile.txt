@@ -1,1 +1,1 @@
-\expandafter{\hello{}}{\def{hello}{this}}
+\def{another}{thing}
