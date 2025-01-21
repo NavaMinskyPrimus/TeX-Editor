@@ -261,19 +261,19 @@ Macro *removeMacro(char *name, Macro *starterMacro)
 {
     if (starterMacro == NULL)
     {
-        return NULL;
+        DIE("You cannot undef %s", name);
     }
     if (strcmp(starterMacro->name, name) == 0)
     {
-        Macro *macro = starterMacro;
-        starterMacro = macro->next;
-        macro->next = NULL;
-        cleanupMacro(macro);
-        return starterMacro;
+        Macro *macro = starterMacro->next;
+        free(starterMacro->name);
+        free(starterMacro->value);
+        free(starterMacro);
+        return macro;
     }
     if (starterMacro->next == NULL)
     {
-        return NULL;
+        DIE("You cannot undef %s", name);
     }
     if (strcmp(starterMacro->next->name, name) == 0)
     {
@@ -389,10 +389,6 @@ Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacr
     int startOfArg = start + 6;
     char *name = getArg(buffer, startOfArg, filestream);
     firstMacro = removeMacro(name, firstMacro);
-    if (firstMacro == NULL)
-    {
-        DIE("You cannot undef %s", name);
-    }
     int toberemoved = 8 + strlen(name);
     if (buffer->sizeOfData <= toberemoved)
     {
@@ -484,15 +480,23 @@ void parseInclude(Buffer *b, int start, Files *filestream)
     free(includethis);
 }
 // TODO: this while function lmao
-void parseAfter()
+Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacro)
 {
+    Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
+    char *before = getArg(buffer, start + 12, filestream);
+    char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
+    littleBuffer->data = after;
+    littleBuffer->sizeOfData = strlen(after);
+    littleBuffer->alocatedSize = strlen(after);
+    Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
+    removeAndReplace(buffer, 13 + 2 + 1 + strlen(before) + strlen(littleBuffer->data), before, start - 1, filestream);
+    removeAndReplace(buffer, 0, littleBuffer->data, start - 1 + strlen(before), filestream);
+    cleanupBuffer(littleBuffer);
+    free(before);
+    return newMacroList;
 }
 Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsing, State state, Macro *firstMacro)
 {
-    if (inAfter)
-    {
-        WARN("this is in expandafter, we haven't initialized this yet%s", "");
-    }
     if (parsing >= buffer->sizeOfData && !inAfter)
     {
         bool unfinished = expandBuffer(buffer, filestream, 1);
@@ -503,8 +507,9 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
     }
     if (parsing >= buffer->sizeOfData && inAfter)
     {
-        DIE("You have reached the end of the argument inside beforeAfter but the parser doesn't think so. There's an issue, idk what yet%s", "");
+        return firstMacro;
     }
+
     switch (state)
     {
     case NORMAL:
@@ -586,6 +591,10 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         else if (strcmp(name, "include") == 0)
         {
             parseInclude(buffer, parsing, filestream);
+        }
+        else if (strcmp(name, "expandafter") == 0)
+        {
+            parseAfter(buffer, filestream, parsing, firstMacro);
         }
         else
         {
@@ -843,11 +852,23 @@ void testInclude()
     cleanupBuffer(buffer);
     cleanupFiles(filestream);
 }
+void testExpandAfter()
+{
+    printf("### Expand After Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames2, 1);
+    Buffer *buffer = initializeBuffer(filestream);
+    parseAfter(buffer, filestream, 1, NULL);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+
 int main(int argc, char *argv[])
 {
     if (argc == 1)
     {
-        testInitializeFileStream();
+        /*testInitializeFileStream();
         expandBufferTest1();
         expandBufferTest2();
         sendtest1();
@@ -863,7 +884,8 @@ int main(int argc, char *argv[])
         // testUndef();
         // testIf();
         // testIfDef();
-        // testInclude();
+        // testInclude();*/
+        testExpandAfter();
     }
     else
     {
