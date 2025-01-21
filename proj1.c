@@ -193,7 +193,6 @@ char *getName(Buffer *buffer, int start, Files *filestream)
 }
 // buffer->data + start is the first letter of something known to be an argument of a macro.
 // This function will get that argument and returns it as a string
-// TODO: Deal with what happens if \} or \{ is in an argument, it should not be counted in the {} count
 char *getArg(Buffer *buffer, int start, Files *filestream)
 {
     int balance = 1;
@@ -216,6 +215,10 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         if (buffer->data[start + i] == '}')
         {
             balance -= 1;
+        }
+        if (buffer->data[start + i] == '\\')
+        {
+            i++;
         }
         i++;
         if (start + i >= buffer->sizeOfData && !worked)
