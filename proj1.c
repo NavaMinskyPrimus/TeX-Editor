@@ -531,7 +531,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
             }
             else
             {
-                return generalParser(buffer, filestream, inAfter, parsing + 1, NORMAL, firstMacro);
+                return generalParser(buffer, filestream, inAfter, parsing + 1, COMMENT, firstMacro);
             }
             break;
         }
@@ -545,7 +545,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
             break;
         default:
             removeAndReplace(buffer, 1, "", parsing, filestream);
-            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            return generalParser(buffer, filestream, inAfter, parsing, COMMENT, firstMacro);
             break;
         }
         break;
