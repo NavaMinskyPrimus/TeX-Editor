@@ -383,7 +383,6 @@ void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be undef specificly
 // it will parse the argument, undefine the macro, and remove the undef macro. It will throw an error if the name
 // is not currenlty a macro. Note start points at u, not at the backslash.
-
 Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro) // TOOD: this is broken, specifically when there is only one thing
 {
     int startOfArg = start + 6;
@@ -401,7 +400,6 @@ Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacr
 }
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be if specificly
 // it will parse the macro.
-
 void parseIf(Buffer *buffer, int start, Files *filestream)
 {
     char *condition = getArg(buffer, start + 3, filestream);
@@ -426,7 +424,6 @@ void parseIf(Buffer *buffer, int start, Files *filestream)
     free(then);
     free(otherwise);
 }
-
 void parseIfDef(Buffer *buffer, int start, Files *filestream, Macro *startermacro)
 {
     char *condition = getArg(buffer, start + 6, filestream);
@@ -453,7 +450,6 @@ void parseIfDef(Buffer *buffer, int start, Files *filestream, Macro *startermacr
     free(then);
     free(otherwise);
 }
-
 void parseInclude(Buffer *b, int start, Files *filestream)
 {
     char *path = getArg(b, start + 8, filestream);
@@ -485,29 +481,16 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
     char *before = getArg(buffer, start + 12, filestream);
     char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
-    printf("%s,%s\n", before, after);
     littleBuffer->data = after;
     littleBuffer->sizeOfData = strlen(after);
     littleBuffer->alocatedSize = strlen(after);
+    int save = strlen(after);
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
-    for (int i = 0; i < littleBuffer->sizeOfData; i++)
-    {
-        printf("%c", littleBuffer->data[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < buffer->sizeOfData; i++)
-    {
-        printf("%c", buffer->data[i]);
-    }
-    printf("\n");
-    printf("%s\n", before);
-    removeAndReplace(buffer, 13 + 2 + 1 + strlen(before) + strlen(littleBuffer->data), before, start - 1, filestream);
-    for (int i = 0; i < buffer->sizeOfData; i++)
-    {
-        printf("%c", buffer->data[i]);
-    }
-    printf("\n");
+
+    removeAndReplace(buffer, 16 + strlen(before) + save, before, start - 1, filestream);
+
     removeAndReplace(buffer, 0, littleBuffer->data, start - 1 + strlen(before), filestream);
+
     cleanupBuffer(littleBuffer);
     free(before);
     return newMacroList;
@@ -612,7 +595,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         }
         else if (strcmp(name, "expandafter") == 0)
         {
-            parseAfter(buffer, filestream, parsing, firstMacro);
+            firstMacro = parseAfter(buffer, filestream, parsing, firstMacro);
         }
         else
         {
@@ -899,9 +882,7 @@ int main(int argc, char *argv[])
         // testUndef();
 
         // defTest();
-        testRemoveAndReplace1();
-
-        testRemoveAndReplace2();
+        testExpandAfter();
     }
     else
     {
