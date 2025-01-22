@@ -7,10 +7,6 @@ Files *initializeFileStream(char **filenamelist, int lengthOfList)
         WARN("Invalid initialization of file stream%s", "");
     }
     Files *myStuff = (Files *)malloc(sizeof(Files));
-    if (myStuff == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     myStuff->numberOfFiles = lengthOfList;
     myStuff->currentFile = fopen(filenamelist[0], "r");
     myStuff->filenames = filenamelist;
@@ -48,15 +44,7 @@ void cleanupBuffer(Buffer *buffer)
 Buffer *initializeBuffer(Files *fileStream)
 {
     Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
-    if (buffer == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     char *string = (char *)malloc(sizeof(char) * 10);
-    if (string == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     int i = fread(string, sizeof(char), 9, fileStream->currentFile);
     buffer->alocatedSize = 10;
     buffer->data = string;
@@ -81,10 +69,6 @@ bool expandBuffer(Buffer *buffer, Files *fileStream, int n)
         }
 
         buffer->data = realloc(buffer->data, newCapacity);
-        if (buffer->data == NULL)
-        {
-            DIE("realloc failed%s", "");
-        }
         buffer->alocatedSize = newCapacity;
     }
     char *destination = buffer->data + buffer->sizeOfData;
@@ -206,10 +190,6 @@ char *getName(Buffer *buffer, int start, Files *filestream)
         }
     }
     char *holder = (char *)malloc(sizeof(char) * (i + 1));
-    if (holder == NULL)
-    {
-        DIE("malloc failed%s", "");
-    }
     memcpy(holder, buffer->data + start, i);
     holder[i] = '\0';
     return holder;
@@ -250,10 +230,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         i++;
     }
     char *holder = (char *)malloc(sizeof(char) * (i));
-    if (holder == NULL)
-    {
-        DIE("malloc failed%s", "");
-    }
+
     memcpy(holder, buffer->data + start, i - 1);
     holder[i - 1] = '\0';
     return holder;
@@ -337,10 +314,6 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
     }
     isValidName(name);
     Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
-    if (madeMacro == NULL)
-    {
-        DIE("malloc failed%s", "");
-    }
     // define the macro's stuff
     madeMacro->name = strdup(name);
     madeMacro->value = strdup(val);
@@ -498,10 +471,6 @@ void parseInclude(Buffer *b, int start, Files *filestream)
         i = i * 2;
     }
     char *includethis = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
-    if (includethis == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     for (int j = 0; j < littleBuffer->sizeOfData; j++)
     {
         includethis[j] = littleBuffer->data[j];
@@ -517,18 +486,10 @@ void parseInclude(Buffer *b, int start, Files *filestream)
 Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacro)
 {
     Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
-    if (littleBuffer == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     char *before = getArg(buffer, start + 12, filestream);
     char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
     int save = strlen(after);
     littleBuffer->data = (char *)malloc(sizeof(char) * save);
-    if (littleBuffer->data == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     for (int i = 0; i < save; i++)
     {
         littleBuffer->data[i] = after[i];
@@ -537,10 +498,6 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     littleBuffer->alocatedSize = save;
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
     char *hold = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
-    if (hold == NULL)
-    {
-        DIE("malloc fialed%s", "");
-    }
     for (int i = 0; i < littleBuffer->sizeOfData; i++)
     {
         hold[i] = littleBuffer->data[i];
@@ -677,19 +634,282 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         break;
     }
 }
+
+char *test_filenames[] = {"testFile.txt", "testfile2.txt", "testfile3.txt"};
+char *test_filenames2[] = {"testFile.txt"};
+void testInitializeFileStream()
+{
+    Files *files = initializeFileStream(test_filenames, 3);
+    cleanupFiles(files);
+}
+void expandBufferTest1()
+{
+    printf("### Buffer Test 1: \n");
+    Files *myStuff = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(myStuff);
+    expandBuffer(buffer, myStuff, 10);
+    for (int i = 0; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
+    cleanupFiles(myStuff);
+    free(buffer->data); // Free the string
+    free(buffer);
+}
+void sendtest1()
+{
+    printf("### Send Test 1: \n");
+    char *this = (char *)malloc(sizeof(char) * 11);
+    strcpy(this, "testpassed");
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
+    buffer->alocatedSize = 11;
+    buffer->data = this;
+    buffer->sizeOfData = 10;
+    send(buffer, 4);
+    printf(" ");
+    printf("%s\n", this);
+    free(buffer->data);
+    free(buffer);
+}
+void testRemoveAndReplace1()
+{
+    printf("### Remove and Replace test 1: \n");
+    char *this = (char *)malloc(sizeof(char) * 11);
+    strcpy(this, "testpassed");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
+    buffer->alocatedSize = 11;
+    buffer->data = this;
+    buffer->sizeOfData = 10;
+    char *string = (char *)malloc(sizeof(char) * 10);
+    strcpy(string, "$$");
+    removeAndReplace(buffer, 1, string, 0, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupFiles(filestream);
+    free(buffer->data);
+    free(buffer);
+    free(string);
+}
+void testRemoveAndReplace2()
+{
+    printf("### Remove and Replace test 2: \n");
+    char *this = (char *)malloc(sizeof(char) * 11);
+    strcpy(this, "testpassed");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
+    buffer->alocatedSize = 11;
+    buffer->data = this;
+    buffer->sizeOfData = 10;
+    char *string = (char *)malloc(sizeof(char) * 20);
+    strcpy(string, "bigbigbigbig");
+    removeAndReplace(buffer, 1, string, 15, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupFiles(filestream);
+    free(buffer->data);
+    free(buffer);
+    free(string);
+}
+void getNametest()
+{
+    printf("### getName Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *b = initializeBuffer(filestream);
+    char *this = getName(b, 1, filestream);
+    printf("%s\n", this);
+    free(this);
+    free(b->data);
+    free(b);
+    cleanupFiles(filestream);
+}
+void getArgtest()
+{
+    printf("### getarg Test: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *b = initializeBuffer(filestream);
+    char *this = getArg(b, 6, filestream);
+    printf("%s\n", this);
+    free(this);
+    free(b->data);
+    free(b);
+    cleanupFiles(filestream);
+}
+void searchMacroTest()
+{
+    printf("### searchmacro Test: \n");
+
+    Macro *macro = (Macro *)malloc(sizeof(Macro));
+    char *name = (char *)malloc(sizeof(char) * 10);
+    strcpy(name, "name");
+    char *name2 = (char *)malloc(sizeof(char) * 10);
+    strcpy(name2, "name2");
+    char *value = (char *)malloc(sizeof(char) * 10);
+    strcpy(value, "value");
+    char *value2 = (char *)malloc(sizeof(char) * 10);
+    strcpy(value2, "value2");
+    macro->name = name;
+    macro->value = value;
+    macro->next = NULL;
+    Macro *macro2 = (Macro *)malloc(sizeof(Macro));
+    macro2->name = name2;
+    macro2->value = value2;
+    macro2->next = macro;
+
+    printf("%d,%d\n", searchMacros("name", macro2) == NULL, searchMacros("notname", macro2) == NULL);
+    cleanupMacro(macro2);
+}
+void expandBufferTest2()
+{
+    printf("### Buffer Test 2: \n");
+    Files *myStuff = initializeFileStream(test_filenames2, 1);
+    Buffer *buffer = initializeBuffer(myStuff);
+    bool this = expandBuffer(buffer, myStuff, 10);
+    for (int i = 0; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
+    printf("%d\n", this);
+    cleanupFiles(myStuff);
+    free(buffer->data); // Free the string
+    free(buffer);
+}
+void initializeMacroTest()
+{
+    printf("### initializeMacro Test: \n");
+    Macro *tester = initializeMacro("name", "value", NULL);
+    printf("%s,%s\n", tester->name, tester->value);
+    cleanupMacro(tester);
+}
+void defTest()
+{
+    printf("### defTest Test: \n");
+    Files *filestream = initializeFileStream(test_filenames2, 1);
+    Buffer *b = initializeBuffer(filestream);
+    // Macro *macro = initializeMacro("name", "value", NULL);
+    parseDef(b, 1, filestream, NULL);
+    send(b, b->sizeOfData);
+    printf("\n");
+    cleanupFiles(filestream);
+    cleanupBuffer(b);
+    // cleanupMacro(macro);
+}
+void testRemoveAndReplace3()
+{
+    printf("### Remove and Replace test 3,removing it all: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    send(buffer, buffer->sizeOfData);
+    removeAndReplace(buffer, buffer->sizeOfData, "", 0, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testUserDefParser()
+{
+    printf("### User Def Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    Macro *macro = initializeMacro("name", "value # # # # #  ", NULL);
+    parseUserDefinedMacro(buffer, 1, filestream, macro);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupMacro(macro);
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testUndef()
+{
+    printf("### Undef Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    Macro *macro = initializeMacro("dont", "matter", NULL);
+    macro = parseUndef(buffer, 1, filestream, macro);
+    expandBuffer(buffer, filestream, 10);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    printMacro(macro);
+    cleanupBuffer(buffer);
+    cleanupMacro(macro);
+    cleanupFiles(filestream);
+}
+void testIf()
+{
+    printf("### If Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    parseIf(buffer, 1, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testIfDef()
+{
+    printf("### If Parser Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    Macro *macro = initializeMacro("name", "value", NULL);
+    parseIfDef(buffer, 1, filestream, macro);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupMacro(macro);
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testInclude()
+{
+    printf("### Include Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames, 3);
+    Buffer *buffer = initializeBuffer(filestream);
+    parseInclude(buffer, 1, filestream);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+void testExpandAfter()
+{
+    printf("### Expand After Test 1: \n");
+    Files *filestream = initializeFileStream(test_filenames2, 1);
+    Buffer *buffer = initializeBuffer(filestream);
+    parseAfter(buffer, filestream, 1, NULL);
+    send(buffer, buffer->sizeOfData);
+    printf("\n");
+    cleanupBuffer(buffer);
+    cleanupFiles(filestream);
+}
+
 int main(int argc, char *argv[])
 {
     if (argc == 1)
     {
-        DIE("no files to parse%s", "");
+        /*testInitializeFileStream();
+        expandBufferTest1();
+        expandBufferTest2();
+        sendtest1();
+        testRemoveAndReplace1();
+        getNametest();
+        //  getArgtest();
+        searchMacroTest();
+        initializeMacroTest();
+
+        // testUserDefParser();
+        // testIf();
+        // testIfDef();
+        // testInclude();*/
+        // testExpandAfter();
+        // testUndef();
+
+        // defTest();
+        testExpandAfter();
     }
     else
     {
         char **filenames = (char **)malloc(sizeof(char *) * (argc - 1));
-        if (filenames == NULL)
-        {
-            DIE("malloc fialed%s", "");
-        }
         for (int i = 0; i < argc - 1; i++)
         {
             filenames[i] = argv[i + 1];
