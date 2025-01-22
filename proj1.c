@@ -127,7 +127,7 @@ void send(Buffer *buffer, int b)
 // this function should take *s and replace the first lenofremove chars and replace them with replacer.
 // Note: replacer can be longer or shorter than lenofremove
 // Note: we will NOT free replacer here, we will do it in the state machine
-int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Files *filestream)
+void removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Files *filestream)
 {
     if (b == NULL || lenOfRemove < 0 || replacer == NULL)
     {
@@ -164,8 +164,8 @@ int removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, File
     }
     memmove(b->data + start + replacerLength, b->data + start + lenOfRemove, b->sizeOfData - start - lenOfRemove + 1); // shifts the memobry so that the stuff after the removed bit is in the right spot
     memcpy(b->data + start, replacer, replacerLength);
+
     b->sizeOfData = b->sizeOfData - lenOfRemove + replacerLength;
-    return holder;
 }
 
 // buffer->data + start is the first letter of something known to be a name of a macro.
@@ -336,7 +336,7 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be def specificly
 // it will parse the argument, build the macro needed, and remove the macro. Note start points at d,
 // not at the backslash
-// TODO: this is broken in some way, relating specifically to it's call to remove and replace.
+// TODO: this is broken in some way, relating specifically to it's call to remove and replace. I think it's about it being the first, ie firtmacro = NULL?
 Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
 {
     int startOfArg1 = start + 4;
@@ -353,16 +353,7 @@ Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
     }
-    for (int i = start; i < buffer->sizeOfData; i++)
-    {
-        printf("%c", buffer->data[i]);
-    }
-    printf("\n");
     removeAndReplace(buffer, toberemoved, "", start - 1, filestream);
-    for (int i = start; i < buffer->sizeOfData; i++)
-    {
-        printf("%c", buffer->data[i]);
-    }
     free(name);
     free(value);
     return firstMacro;
@@ -494,11 +485,28 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
     char *before = getArg(buffer, start + 12, filestream);
     char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
+    printf("%s,%s\n", before, after);
     littleBuffer->data = after;
     littleBuffer->sizeOfData = strlen(after);
     littleBuffer->alocatedSize = strlen(after);
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
+    for (int i = 0; i < littleBuffer->sizeOfData; i++)
+    {
+        printf("%c", littleBuffer->data[i]);
+    }
+    printf("\n");
+    for (int i = 0; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
+    printf("%s\n", before);
     removeAndReplace(buffer, 13 + 2 + 1 + strlen(before) + strlen(littleBuffer->data), before, start - 1, filestream);
+    for (int i = 0; i < buffer->sizeOfData; i++)
+    {
+        printf("%c", buffer->data[i]);
+    }
+    printf("\n");
     removeAndReplace(buffer, 0, littleBuffer->data, start - 1 + strlen(before), filestream);
     cleanupBuffer(littleBuffer);
     free(before);
@@ -772,17 +780,15 @@ void initializeMacroTest()
 void defTest()
 {
     printf("### defTest Test: \n");
-    Files *filestream = initializeFileStream(test_filenames, 3);
+    Files *filestream = initializeFileStream(test_filenames2, 1);
     Buffer *b = initializeBuffer(filestream);
-    Macro *macro = initializeMacro("name2", "value", NULL);
-    parseDef(b, 1, filestream, macro);
-    printf("%s\n", macro->next->name);
-    printf("%s\n", macro->next->value);
+    // Macro *macro = initializeMacro("name", "value", NULL);
+    parseDef(b, 1, filestream, NULL);
     send(b, b->sizeOfData);
     printf("\n");
     cleanupFiles(filestream);
     cleanupBuffer(b);
-    cleanupMacro(macro);
+    // cleanupMacro(macro);
 }
 void testRemoveAndReplace3()
 {
@@ -884,15 +890,18 @@ int main(int argc, char *argv[])
         //  getArgtest();
         searchMacroTest();
         initializeMacroTest();
-        testRemoveAndReplace2();
-        testRemoveAndReplace3();
-        // defTest();
+
         // testUserDefParser();
         // testIf();
         // testIfDef();
         // testInclude();*/
         // testExpandAfter();
-        testUndef();
+        // testUndef();
+
+        // defTest();
+        testRemoveAndReplace1();
+
+        testRemoveAndReplace2();
     }
     else
     {

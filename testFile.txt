@@ -1,1 +1,1 @@
-\def{another}{thing}
+\expandafter{hello}{there}
