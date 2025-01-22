@@ -224,13 +224,14 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         {
             balance -= 1;
         }
-        if (buffer->data[start + i] == '\\')
+        if (buffer->data[start + i] == '\\') // TODO: This is 100% broken
         {
             i++;
         }
         i++;
     }
     char *holder = (char *)malloc(sizeof(char) * (i));
+
     memcpy(holder, buffer->data + start, i - 1);
     holder[i - 1] = '\0';
     return holder;
@@ -481,18 +482,27 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
     char *before = getArg(buffer, start + 12, filestream);
     char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
-    littleBuffer->data = after;
-    littleBuffer->sizeOfData = strlen(after);
-    littleBuffer->alocatedSize = strlen(after);
     int save = strlen(after);
+    littleBuffer->data = (char *)malloc(sizeof(char) * save);
+    for (int i = 0; i < save; i++)
+    {
+        littleBuffer->data[i] = after[i];
+    }
+    littleBuffer->sizeOfData = save;
+    littleBuffer->alocatedSize = save;
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
-
+    char *hold = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
+    for (int i = 0; i < littleBuffer->sizeOfData; i++)
+    {
+        hold[i] = littleBuffer->data[i];
+    }
+    hold[littleBuffer->sizeOfData] = '\0';
     removeAndReplace(buffer, 16 + strlen(before) + save, before, start - 1, filestream);
-
-    removeAndReplace(buffer, 0, littleBuffer->data, start - 1 + strlen(before), filestream);
-
+    removeAndReplace(buffer, 0, hold, start - 1 + strlen(before), filestream);
     cleanupBuffer(littleBuffer);
     free(before);
+    free(after);
+    free(hold);
     return newMacroList;
 }
 Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsing, State state, Macro *firstMacro)
@@ -531,7 +541,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
             }
             else
             {
-                return generalParser(buffer, filestream, inAfter, parsing + 1, COMMENT, firstMacro);
+                return generalParser(buffer, filestream, inAfter, parsing + 1, NORMAL, firstMacro);
             }
             break;
         }

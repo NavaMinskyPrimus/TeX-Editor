@@ -1,2 +1,1 @@
-% let's see
-hello
+\expandafter{hi}{\def{this}{\expandafter{34}{56}}} \this{}
