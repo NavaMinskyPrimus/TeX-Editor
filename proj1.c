@@ -98,7 +98,6 @@ bool expandBuffer(Buffer *buffer, Files *fileStream, int n)
         }
     }
     int bytesRead = n - leftToRead;
-    // Update the buffer size and null-terminate
     buffer->sizeOfData += bytesRead;
     return (leftToRead == 0);
 }
@@ -371,14 +370,31 @@ void parseUserDefinedMacro(Buffer *buffer, int start, Files *filestream, Macro *
     removeAndReplace(buffer, 1 + nameLength + 2 + strlen(plugin), value, start - 1, filestream);
     int numberOfReplacements = 0;
     int valueLen = strlen(value);
+    for(int i = 0; start+ i < buffer->sizeOfData;i++){
+        printf("%c",buffer->data[start+i]);
+    }
+    printf("\n");
     for (int i = 0; i < valueLen; i++)
     {
+        printf("%d,%c\n",i,value[i]);
         if (value[i] == '#')
         {
             removeAndReplace(buffer, 1, plugin, start - 1 + i + numberOfReplacements * (strlen(plugin) - 1), filestream);
             numberOfReplacements++;
         }
+        if (value[i] == '\\' && i + 1 < valueLen)
+        {
+            if (value[i + 1] == '#')
+            {
+                i++;
+            }
+        }
     }
+    printf("right at the end\n");
+    for(int i = 0; start+ i < buffer->sizeOfData;i++){
+        printf("%c",buffer->data[start+i]);
+    }
+    printf("\n");    
     free(plugin);
 }
 // this takes a buffer, a filestream, and a pointer to the start of a macro known to be undef specificly
@@ -566,8 +582,9 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         }
         else if (buffer->data[parsing] == '\\' || buffer->data[parsing] == '%' || buffer->data[parsing] == '{' || buffer->data[parsing] == '}' || buffer->data[parsing] == '#')
         {
+        
             removeAndReplace(buffer, 1, "", parsing - 1, filestream);
-            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            return generalParser(buffer, filestream, inAfter, parsing-1, NORMAL, firstMacro);
         }
         else if (inAfter)
         {
@@ -610,10 +627,16 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         else
         {
             Macro *userDefedMacro = searchMacros(name, firstMacro);
+            expandBuffer(buffer, filestream,10);
+            if (userDefedMacro == NULL)
+            {
+                DIE("the macro, %s, is undefined\n", name);
+            }
             parseUserDefinedMacro(buffer, parsing, filestream, userDefedMacro);
         }
         free(name);
-        return generalParser(buffer, filestream, inAfter, parsing - 1, NORMAL, firstMacro);
+        int newParsing = (parsing > 0) ? (parsing - 1) : 0;
+        return generalParser(buffer, filestream, inAfter, newParsing, NORMAL, firstMacro);
         break;
     }
     default:
