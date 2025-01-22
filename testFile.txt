@@ -1,1 +1,24 @@
-\#
+% This is a sample input file to test the macro processor
+\def{GREETING}{Hello, #!}
+\def{FAREWELL}{Goodbye, #. See you later!}
+\def{COMBINED}{\GREETING{World} \FAREWELL{World}}
+
+\GREETING{Alice}
+\FAREWELL{Bob}
+\COMBINED{}
+
+% Redefine GREETING to include a welcome message
+\undef{GREETING}
+\def{GREETING}{Welcome, #! Enjoy your stay.Hello again, #!}
+\COMBINED{}
+
+% Conditional macro expansion using \if
+\if{Alice}{
+    \def{STATUS}{Alice is present.}
+}{
+    \def{STATUS}{Alice is absent.}
+}
+\STATUS{}
+This line contains escaped braces: \{ and \}.
+This line contains an escaped backslash: \\\\.
+This line contains an escaped hash: \#.
