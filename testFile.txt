@@ -1,24 +1,17 @@
-% This is a sample input file to test the macro processor
-\def{GREETING}{Hello, #!}
-\def{FAREWELL}{Goodbye, #. See you later!}
-\def{COMBINED}{\GREETING{World} \FAREWELL{World}}
+A list of values:
+\def{MACRO}{VALUE = #}
+\MACRO{1}
+\MACRO{2}
+\MACRO{3}
+\MACRO{4}
+\MACRO{5}
+\MACRO{6}
+\MACRO{7}
 
-\GREETING{Alice}
-\FAREWELL{Bob}
-\COMBINED{}
+\def{testMacro}{some text #}
+\def{macroFragment}{goes #}
 
-% Redefine GREETING to include a welcome message
-\undef{GREETING}
-\def{GREETING}{Welcome, #! Enjoy your stay.Hello again, #!}
-\COMBINED{}
+\testMacro{\macroFragment}{here}
 
-% Conditional macro expansion using \if
-\if{Alice}{
-    \def{STATUS}{Alice is present.}
-}{
-    \def{STATUS}{Alice is absent.}
-}
-\STATUS{}
-This line contains escaped braces: \{ and \}.
-This line contains an escaped backslash: \\\\.
-This line contains an escaped hash: \#.
+\def{B}{buffalo}
+\expandafter{\B{}}{\undef{B}\def{B}{bison}}

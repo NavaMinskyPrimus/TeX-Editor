@@ -173,8 +173,7 @@ void removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Fil
         b->data = newData;
         b->alocatedSize = holder;
     }
-    memmove(b->data + start + replacerLength, b->data + start + lenOfRemove, b->sizeOfData - start - lenOfRemove + 1); // shifts the memobry so that the stuff after the removed bit is in the right spot
-    memcpy(b->data + start, replacer, replacerLength);
+    memmove(b->data + start + replacerLength, b->data + start + lenOfRemove, b->sizeOfData - start - lenOfRemove); // ERROR? There may be an off by one error due to this, within a call to remove and replace
 
     b->sizeOfData = b->sizeOfData - lenOfRemove + replacerLength;
 }
