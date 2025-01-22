@@ -12,6 +12,10 @@ A list of values:
 \def{macroFragment}{goes #}
 
 \testMacro{\macroFragment}{here}
-
 \def{B}{buffalo}
+
 \expandafter{\B{}}{\undef{B}\def{B}{bison}}
+\def{MACRO}{VALUE = #}
+
+A list of values:
+\def{MACRO}{VALUE = #}

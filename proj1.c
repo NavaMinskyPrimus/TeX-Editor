@@ -7,8 +7,9 @@ Files *initializeFileStream(char **filenamelist, int lengthOfList)
         WARN("Invalid initialization of file stream%s", "");
     }
     Files *myStuff = (Files *)malloc(sizeof(Files));
-    if(myStuff == NULL){
-        DIE("malloc fialed%s","");
+    if (myStuff == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     myStuff->numberOfFiles = lengthOfList;
     myStuff->currentFile = fopen(filenamelist[0], "r");
@@ -47,12 +48,14 @@ void cleanupBuffer(Buffer *buffer)
 Buffer *initializeBuffer(Files *fileStream)
 {
     Buffer *buffer = (Buffer *)malloc(sizeof(Buffer));
-    if(buffer == NULL){
-        DIE("malloc fialed%s","");
+    if (buffer == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     char *string = (char *)malloc(sizeof(char) * 10);
-    if(string == NULL){
-        DIE("malloc fialed%s","");
+    if (string == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     int i = fread(string, sizeof(char), 9, fileStream->currentFile);
     buffer->alocatedSize = 10;
@@ -78,8 +81,9 @@ bool expandBuffer(Buffer *buffer, Files *fileStream, int n)
         }
 
         buffer->data = realloc(buffer->data, newCapacity);
-        if(buffer->data == NULL){
-            DIE("realloc failed%s","");
+        if (buffer->data == NULL)
+        {
+            DIE("realloc failed%s", "");
         }
         buffer->alocatedSize = newCapacity;
     }
@@ -173,7 +177,8 @@ void removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Fil
         b->data = newData;
         b->alocatedSize = holder;
     }
-    memmove(b->data + start + replacerLength, b->data + start + lenOfRemove, b->sizeOfData - start - lenOfRemove); // ERROR? There may be an off by one error due to this, within a call to remove and replace
+    memmove(b->data + start + replacerLength, b->data + start + lenOfRemove, b->sizeOfData - start - lenOfRemove); // shifts the memobry so that the stuff after the removed bit is in the right spot
+    memcpy(b->data + start, replacer, replacerLength);
 
     b->sizeOfData = b->sizeOfData - lenOfRemove + replacerLength;
 }
@@ -201,8 +206,9 @@ char *getName(Buffer *buffer, int start, Files *filestream)
         }
     }
     char *holder = (char *)malloc(sizeof(char) * (i + 1));
-    if(holder == NULL){
-        DIE("malloc failed%s","");
+    if (holder == NULL)
+    {
+        DIE("malloc failed%s", "");
     }
     memcpy(holder, buffer->data + start, i);
     holder[i] = '\0';
@@ -244,8 +250,9 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         i++;
     }
     char *holder = (char *)malloc(sizeof(char) * (i));
-if(holder == NULL){
-        DIE("malloc failed%s","");
+    if (holder == NULL)
+    {
+        DIE("malloc failed%s", "");
     }
     memcpy(holder, buffer->data + start, i - 1);
     holder[i - 1] = '\0';
@@ -330,8 +337,9 @@ Macro *initializeMacro(char *name, char *val, Macro *firstMacro)
     }
     isValidName(name);
     Macro *madeMacro = (Macro *)malloc(sizeof(Macro));
-    if(madeMacro == NULL){
-        DIE("malloc failed%s","");
+    if (madeMacro == NULL)
+    {
+        DIE("malloc failed%s", "");
     }
     // define the macro's stuff
     madeMacro->name = strdup(name);
@@ -490,8 +498,9 @@ void parseInclude(Buffer *b, int start, Files *filestream)
         i = i * 2;
     }
     char *includethis = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
-    if(includethis == NULL){
-        DIE("malloc fialed%s","");
+    if (includethis == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     for (int j = 0; j < littleBuffer->sizeOfData; j++)
     {
@@ -508,15 +517,17 @@ void parseInclude(Buffer *b, int start, Files *filestream)
 Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacro)
 {
     Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
-    if(littleBuffer == NULL){
-        DIE("malloc fialed%s","");
+    if (littleBuffer == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     char *before = getArg(buffer, start + 12, filestream);
     char *after = getArg(buffer, start + 12 + strlen(before) + 2, filestream);
     int save = strlen(after);
     littleBuffer->data = (char *)malloc(sizeof(char) * save);
-    if(littleBuffer->data == NULL){
-        DIE("malloc fialed%s","");
+    if (littleBuffer->data == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     for (int i = 0; i < save; i++)
     {
@@ -526,8 +537,9 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     littleBuffer->alocatedSize = save;
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro);
     char *hold = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
-    if(hold == NULL){
-        DIE("malloc fialed%s","");
+    if (hold == NULL)
+    {
+        DIE("malloc fialed%s", "");
     }
     for (int i = 0; i < littleBuffer->sizeOfData; i++)
     {
@@ -603,9 +615,9 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         }
         else if (buffer->data[parsing] == '\\' || buffer->data[parsing] == '%' || buffer->data[parsing] == '{' || buffer->data[parsing] == '}' || buffer->data[parsing] == '#')
         {
-        
+
             removeAndReplace(buffer, 1, "", parsing - 1, filestream);
-            return generalParser(buffer, filestream, inAfter, parsing-1, NORMAL, firstMacro);
+            return generalParser(buffer, filestream, inAfter, parsing - 1, NORMAL, firstMacro);
         }
         else if (inAfter)
         {
@@ -648,7 +660,7 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         else
         {
             Macro *userDefedMacro = searchMacros(name, firstMacro);
-            expandBuffer(buffer, filestream,10);
+            expandBuffer(buffer, filestream, 10);
             if (userDefedMacro == NULL)
             {
                 DIE("the macro, %s, is undefined\n", name);
@@ -669,13 +681,14 @@ int main(int argc, char *argv[])
 {
     if (argc == 1)
     {
-        DIE("no files to parse%s","");
+        DIE("no files to parse%s", "");
     }
     else
     {
         char **filenames = (char **)malloc(sizeof(char *) * (argc - 1));
-        if(filenames == NULL){
-            DIE("malloc fialed%s","");
+        if (filenames == NULL)
+        {
+            DIE("malloc fialed%s", "");
         }
         for (int i = 0; i < argc - 1; i++)
         {
