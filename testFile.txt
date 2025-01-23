@@ -1,4 +1,3 @@
-
-\def{B}{buffalo}
-
-\expandafter{\B{}}{\undef{B}\def{B}{bison}}
+\expandafter{\B{}}{\def{B}{bison}}
+i wonder
+A list of values:

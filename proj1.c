@@ -546,6 +546,7 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
         hold[i] = littleBuffer->data[i];
     }
     hold[littleBuffer->sizeOfData] = '\0';
+    expandBuffer(buffer,filestream,1);
     removeAndReplace(buffer, 16 + strlen(before) + save, before, start - 1, filestream);
     removeAndReplace(buffer, 0, hold, start - 1 + strlen(before), filestream);
     cleanupBuffer(littleBuffer);
