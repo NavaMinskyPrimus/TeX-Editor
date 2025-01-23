@@ -1,3 +1,1 @@
-\expandafter{\B{}}{\def{B}{bison}}
-i wonder
-A list of values:
+ \expandafter{\b}{\def{b}{##}}{hello }
