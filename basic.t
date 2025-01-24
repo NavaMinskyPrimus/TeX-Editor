@@ -2,20 +2,21 @@ Let's do a simple test. First, set things up.
 
   $ . $TESTDIR/setup.sh
 
-And now, do the thing.
+Run the basic tests which you get if you pass no arguments
 
   $ run
-  ### Buffer Test 1: 
-  \name{\names{}mo
-  ### Send Test 1: 
-  test passed
-  ### Remove and Replace test 1: 
-  $$estpassed
-  ### getName Test 1: 
-  name
-  ### searchmacro Test: 
-  0,1
-  ### initializeMacro Test: 
-  name,value
-  ### Remove and Replace test 2: 
-  testpbigbigbigbigssed
+
+Let's test on a simple file.
+
+  $ cat << 'EOF' > foo.txt
+  > foo\def{b}{}bar\b{abc}snoo
+  > EOF
+  $ run foo.txt
+  foobarsnoo
+  
+
+
+Echo test
+
+  $ echo 1 2 3
+  1 2 3

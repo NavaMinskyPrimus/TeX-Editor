@@ -1,1 +1,2 @@
- \expandafter{\b}{\def{b}{##}}{hello }
+whatever % words                
+                hello

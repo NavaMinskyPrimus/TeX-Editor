@@ -41,12 +41,14 @@ typedef struct Buffer
     int alocatedSize;
     char *data;
     int sizeOfData;
+    bool inAfter;
 } Buffer;
 
 typedef enum
 {
     NORMAL,
     COMMENT,
+    ENDCOMMENT,
     BACKSLASH,
     MACRO_NAME,
     PARSING_ARGS,
