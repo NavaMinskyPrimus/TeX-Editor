@@ -248,7 +248,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         {
             balance -= 1;
         }
-        if (buffer->data[start + i] == '\\') // TODO: This is 100% broken
+        if (buffer->data[start + i] == '\\')
         {
             i++;
         }
@@ -499,6 +499,11 @@ void parseInclude(Buffer *b, int start, Files *filestream)
 {
     char *path = getArg(b, start + 8, filestream);
     char *nameOfIndluce[] = {path};
+    FILE *file = fopen(nameOfIndluce[0], "r");
+    if (file == NULL)
+    {
+        DIE("can't read %s", path);
+    }
     Files *littlefilestream = initializeFileStream(nameOfIndluce, 1);
     Buffer *littleBuffer = initializeBuffer(littlefilestream);
     int i = 10;
@@ -637,9 +642,17 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
         }
         else if (buffer->data[parsing] == '\\' || buffer->data[parsing] == '%' || buffer->data[parsing] == '{' || buffer->data[parsing] == '}' || buffer->data[parsing] == '#')
         {
-
-            removeAndReplace(buffer, 1, "", parsing - 1, filestream);
-            return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            if (inAfter)
+            {
+                removeAndReplace(buffer, 1, "", parsing - 1, filestream);
+                return generalParser(buffer, filestream, inAfter, parsing, NORMAL, firstMacro);
+            }
+            else
+            {
+                removeAndReplace(buffer, 1, "", parsing - 1, filestream);
+                send(buffer, 1);
+                return generalParser(buffer, filestream, inAfter, 0, NORMAL, firstMacro); // whenever anything gets sent, we should be at zero.
+            }
         }
         else if (inAfter)
         {
