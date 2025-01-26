@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -Werror -O3
+CFLAGS = -Wall -Wextra -Wpedantic -Werror -O3 -g
 
 TARGETS = proj1
 DEPS = proj1.h

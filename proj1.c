@@ -223,15 +223,16 @@ char *getName(Buffer *buffer, int start, Files *filestream)
 // This function will get that argument and returns it as a string
 char *getArg(Buffer *buffer, int start, Files *filestream)
 {
+    bool comment = false;
     int balance = 1;
     int i = 0;
     while (balance != 0)
     {
-        bool worked = true;
+        bool eof = false;
         while (start + i >= buffer->sizeOfData)
         {
-            worked = expandBuffer(buffer, filestream, i + 1);
-            if (!worked)
+            eof = !expandBuffer(buffer, filestream, i + 1);
+            if (eof)
             {
                 break;
             }
@@ -240,15 +241,23 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
         {
             DIE("Incomplete argument in file stream%s", "");
         }
-        if (buffer->data[start + i] == '{')
+        if (!comment && buffer->data[start + i] == '{')
         {
             balance += 1;
         }
-        if (buffer->data[start + i] == '}')
+        if (!comment && buffer->data[start + i] == '}')
         {
             balance -= 1;
         }
-        if (buffer->data[start + i] == '\\')
+        if (!comment && buffer->data[start + i] == '%')
+        {
+            comment = true;
+        }
+        if (comment && buffer->data[start + i] == '\n')
+        {
+            comment = false;
+        }
+        if (!comment && buffer->data[start + i] == '\\')
         {
             i++;
         }
@@ -263,6 +272,7 @@ char *getArg(Buffer *buffer, int start, Files *filestream)
     holder[i - 1] = '\0';
     return holder;
 }
+
 Macro *searchMacros(char *name, Macro *starterMacro)
 {
     if (starterMacro == NULL)
@@ -499,11 +509,12 @@ void parseInclude(Buffer *b, int start, Files *filestream)
 {
     char *path = getArg(b, start + 8, filestream);
     char *nameOfIndluce[] = {path};
-    FILE *file = fopen(nameOfIndluce[0], "r");
-    if (file == NULL)
+    FILE *f = fopen(nameOfIndluce[0], "r");
+    if (f == NULL)
     {
         DIE("can't read %s", path);
     }
+    fclose(f);
     Files *littlefilestream = initializeFileStream(nameOfIndluce, 1);
     Buffer *littleBuffer = initializeBuffer(littlefilestream);
     int i = 10;
