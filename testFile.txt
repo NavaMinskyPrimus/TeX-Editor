@@ -1,1 +1,3 @@
-\if{ture}{{}}{}
+\include{include.txt}{#} \doesthis{work?}
+
+\break
