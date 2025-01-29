@@ -1,3 +1,6 @@
-\include{include.txt}{#} \doesthis{work?}
-
-\break
+\def{lets%   
+}{test this thing}
+\lets%something here
+{}
+\undef{lets%whatever
+}

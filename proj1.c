@@ -62,13 +62,13 @@ Buffer *initializeBuffer(Files *fileStream)
     buffer->alocatedSize = 10;
     buffer->data = data;
     buffer->sizeOfData = i;
-    buffer->inAfter = false;
+    buffer->cantExpand = false;
     return buffer;
 }
 // This returns false if you reach the end of the filestream
 bool expandBuffer(Buffer *buffer, Files *fileStream, int n)
 {
-    if (buffer->inAfter)
+    if (buffer->cantExpand)
     {
         DIE("bad inputs to ExpandBuffer: buffer is not expandable%s", "");
     }
@@ -187,13 +187,61 @@ void removeAndReplace(Buffer *b, int lenOfRemove, char *replacer, int start, Fil
 
     b->sizeOfData = b->sizeOfData - lenOfRemove + replacerLength;
 }
+void removeComments(char *string, int size)
+{
+    Buffer *littleBuffer = (Buffer *)malloc(sizeof(Buffer));
+    littleBuffer->data = string;
+    littleBuffer->cantExpand = true;
+    littleBuffer->sizeOfData = strlen(string) + 1;
+    littleBuffer->alocatedSize = size;
+    bool comment = false;
+    bool postComment = false;
+    int i = 0;
+    while (i < littleBuffer->sizeOfData)
+    {
+        if (!comment && !postComment)
+        {
+            if (string[i] == '%')
+            {
+                comment = true;
+                removeAndReplace(littleBuffer, 1, "", i, NULL);
+                continue;
+            }
+            i++;
+        }
+        if (comment)
+        {
+            if (string[i] == '\n')
+            {
+                comment = false;
+                postComment = true;
+            }
+            removeAndReplace(littleBuffer, 1, "", i, NULL);
+            continue;
+        }
+        if (postComment)
+        {
+            if (isblank(string[i]))
+            {
+                removeAndReplace(littleBuffer, 1, "", i, NULL);
+            }
+            else
+            {
+                postComment = false;
+            }
+            continue;
+        }
+    }
+    free(littleBuffer);
+}
 
 // buffer->data + start is the first letter of something known to be a name of a macro.
 // This function will get that name and return it as a string. Does not check if it is a valid name
 char *getName(Buffer *buffer, int start, Files *filestream)
 {
     int i = 0;
-    while (buffer->data[start + i] != '{')
+    int comment = false;
+    while (buffer->data[start + i] != '{' || comment)
     {
         bool worked = true;
         i++;
@@ -208,6 +256,14 @@ char *getName(Buffer *buffer, int start, Files *filestream)
         if (start + i >= buffer->sizeOfData)
         {
             DIE("Incomplete name in file stream%s", "");
+        }
+        if (buffer->data[start + i] == '%')
+        {
+            comment = true;
+        }
+        if (buffer->data[start + i] == '\n')
+        {
+            comment = false;
         }
     }
     char *holder = (char *)malloc(sizeof(char) * (i + 1));
@@ -331,7 +387,7 @@ bool isValidName(char *s)
     }
     while (*s)
     {
-        if (!isalnum(*s))
+        if (!isalnum(*s) && s)
         {
             DIE("Invalid macro name: %s", s);
             return false; // Not alphanumeric
@@ -384,13 +440,15 @@ Macro *parseDef(Buffer *buffer, int start, Files *filestream, Macro *firstMacro)
     int startOfArg1 = start + 4;
     char *name = getArg(buffer, startOfArg1, filestream);
     char *value = getArg(buffer, startOfArg1 + strlen(name) + 2, filestream);
+    int toberemoved = 8 + strlen(name) + strlen(value);
+    removeComments(name, strlen(name) + 1);
+    removeComments(value, strlen(value) + 1);
     isValidName(name);
     Macro *hold = initializeMacro(name, value, firstMacro);
     if (firstMacro == NULL)
     {
         firstMacro = hold;
     }
-    int toberemoved = 8 + strlen(name) + strlen(value);
     if (buffer->sizeOfData < toberemoved)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
@@ -434,8 +492,9 @@ Macro *parseUndef(Buffer *buffer, int start, Files *filestream, Macro *firstMacr
 {
     int startOfArg = start + 6;
     char *name = getArg(buffer, startOfArg, filestream);
-    firstMacro = removeMacro(name, firstMacro);
     int toberemoved = 8 + strlen(name);
+    removeComments(name,strlen(name)+1);
+    firstMacro = removeMacro(name, firstMacro);
     if (buffer->sizeOfData < toberemoved)
     {
         expandBuffer(buffer, filestream, toberemoved - buffer->sizeOfData + 1);
@@ -453,6 +512,7 @@ void parseIf(Buffer *buffer, int start, Files *filestream)
     char *then = getArg(buffer, start + 3 + strlen(condition) + 2, filestream);
     char *otherwise = getArg(buffer, start + 3 + strlen(condition) + 2 + strlen(then) + 2, filestream);
     int sizeOfRemove = 1 + start + 3 + strlen(condition) + 2 + strlen(then) + 2 + strlen(otherwise);
+    removeComments(condition,strlen(condition)+1);
     if (strcmp(condition, "") != 0)
     {
         while (sizeOfRemove >= buffer->sizeOfData - start)
@@ -481,6 +541,8 @@ void parseIfDef(Buffer *buffer, int start, Files *filestream, Macro *startermacr
     char *then = getArg(buffer, start + 6 + strlen(condition) + 2, filestream);
     char *otherwise = getArg(buffer, start + 6 + strlen(condition) + 2 + strlen(then) + 2, filestream);
     int sizeOfRemove = 1 + start + 6 + strlen(condition) + 2 + strlen(then) + 2 + strlen(otherwise);
+    removeComments(condition,strlen(condition)+1);
+
     isValidName(condition);
     Macro *macro = searchMacros(condition, startermacro);
     if (macro != NULL)
@@ -509,6 +571,8 @@ void parseInclude(Buffer *b, int start, Files *filestream)
 {
     char *path = getArg(b, start + 8, filestream);
     char *nameOfIndluce[] = {path};
+    int length = strlen(path);
+    removeComments(path,strlen(path)+1);
     FILE *f = fopen(nameOfIndluce[0], "r");
     if (f == NULL)
     {
@@ -534,7 +598,7 @@ void parseInclude(Buffer *b, int start, Files *filestream)
         includethis[j] = littleBuffer->data[j];
     }
     includethis[littleBuffer->sizeOfData] = '\0';
-    removeAndReplace(b, 10 + strlen(path), includethis, start - 1, filestream);
+    removeAndReplace(b, 10 + length, includethis, start - 1, filestream);
     free(path);
     cleanupBuffer(littleBuffer);
     cleanupFiles(littlefilestream);
@@ -562,7 +626,7 @@ Macro *parseAfter(Buffer *buffer, Files *filestream, int start, Macro *firstMacr
     }
     littleBuffer->sizeOfData = save;
     littleBuffer->alocatedSize = save;
-    littleBuffer->inAfter = true;
+    littleBuffer->cantExpand = true;
     Macro *newMacroList = generalParser(littleBuffer, filestream, true, 0, NORMAL, firstMacro, NULL);
 
     char *hold = (char *)malloc(sizeof(char) * littleBuffer->sizeOfData + 1);
@@ -678,6 +742,13 @@ Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsin
     case MACRO_NAME:
     {
         char *name = getName(buffer, parsing, filestream);
+        int fullNameLength = strlen(name);
+        removeComments(name, strlen(name) + 1);
+        int namelength = strlen(name);
+        if (fullNameLength != namelength)
+        {
+            removeAndReplace(buffer, fullNameLength, name, parsing, filestream);
+        }
         isValidName(name);
         if (strcmp(name, "def") == 0)
         {
@@ -982,6 +1053,13 @@ void testExpandAfter()
  cleanupFiles(filestream);
 }
 */
+void testRemoveComment()
+{
+    char *name = (char *)malloc(sizeof(char) * 30);
+    strcpy(name, "word % words words \n\t\t\tmore");
+    removeComments(name, 30);
+    printf("%s", name);
+}
 int main(int argc, char *argv[])
 {
     if (argc == 1)

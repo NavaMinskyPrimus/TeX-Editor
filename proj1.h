@@ -41,7 +41,7 @@ typedef struct Buffer
     int alocatedSize;
     char *data;
     int sizeOfData;
-    bool inAfter;
+    bool cantExpand;
 } Buffer;
 
 typedef enum
