@@ -1,6 +1,0 @@
-\def{lets%   
-}{test this thing}
-\lets%something here
-{}
-\undef{lets%whatever
-}
