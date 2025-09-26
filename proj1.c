@@ -1,5 +1,3 @@
-// TODO: Make sure you can NEVER expand when inAfter
-
 #include "proj1.h"
 Macro *generalParser(Buffer *buffer, Files *filestream, bool inAfter, int parsing, State state, Macro *firstMacro, FILE *out);
 Files *initializeFileStream(char **filenamelist, int lengthOfList)
@@ -817,7 +815,7 @@ void expandBufferTest1()
     free(buffer->data); // Free the string
     free(buffer);
 }*/
-void sendtest1()
+void sendtest1(void)
 {
     printf("### Send Test 1: \n");
     char *this = (char *)malloc(sizeof(char) * 11);
@@ -1053,7 +1051,7 @@ void testExpandAfter()
  cleanupFiles(filestream);
 }
 */
-void testRemoveComment()
+void testRemoveComment(void)
 {
     char *name = (char *)malloc(sizeof(char) * 30);
     strcpy(name, "word % words words \n\t\t\tmore");

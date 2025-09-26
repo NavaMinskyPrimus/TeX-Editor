@@ -1,0 +1,40 @@
+
+---
+
+% This is a longer test
+
+\def{NAME}{Alice}
+\def{GREET}{Hello, #!}
+\def{LIST}{\if{#}{#; \LIST}{end}}
+
+% Simple substitution
+\GREET{World}
+
+% Recursive list expansion
+\LIST{apples}{bananas}{carrots}{}
+
+% Conditional expansion
+\if{X}{Condition true}{Condition false}
+\if{}{Empty is false}{Non-empty is true}
+
+% Undefining and redefining
+\undef{NAME}
+\def{NAME}{Bob}
+Hi, \NAME{}!
+
+% Nested macros
+\def{WRAP}{[[#]]}
+\WRAP{\GREET{\NAME{}}}
+
+% Escape sequences
+Escaped characters: \{ \} \% \# \\
+
+% expandafter demo
+\def{ANIMAL}{cat}
+\expandafter{\def{SOUND}}{{\ANIMAL{}}}
+\undef{ANIMAL}
+\def{ANIMAL}{dog}
+\SOUND{} = \ANIMAL{}
+
+% include demo (assume "extra.txt" exists with one line: "INCLUDED CONTENT")
+\include{extra.txt}

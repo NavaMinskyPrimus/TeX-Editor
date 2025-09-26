@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <malloc.h>
 
 // Write message to stderr using format FORMAT
 #define WARN(format, ...) fprintf(stderr, "proj1: " format "\n", __VA_ARGS__)
